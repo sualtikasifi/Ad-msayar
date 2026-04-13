@@ -16,6 +16,8 @@
       "bundleIdentifier": "com.admsayar.app",
       "infoPlist": {
         "NSMotionUsageDescription": "Adım sayımı için hareket sensörüne erişim gereklidir.",
+        "NSPhotoLibraryUsageDescription": "Profil fotoğrafı seçmek için fotoğraf kütüphanesine erişim gereklidir.",
+        "NSCameraUsageDescription": "Profil fotoğrafı çekmek için kamera erişimi gereklidir.",
         "UIBackgroundModes": ["fetch", "processing"]
       }
     },
@@ -33,6 +35,7 @@
       "expo-router",
       "expo-sensors",
       "expo-notifications",
+      "expo-image-picker",
       [
         "expo-background-fetch",
         {

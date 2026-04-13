@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Avatar } from '@/components/Avatar';
 import { useAuthStore } from '@/store/authStore';
 import { apiClient } from '@/api/client';
@@ -31,7 +31,7 @@ export default function ProfileScreen() {
 
   const isMe = id === me?.id;
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     async function load() {
       setLoading(true);
       try {
@@ -81,7 +81,7 @@ export default function ProfileScreen() {
       }
     }
     load();
-  }, [id, isMe]);
+  }, [id, isMe]));  // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleAddFriend() {
     if (!profile) return;
@@ -116,7 +116,13 @@ export default function ProfileScreen() {
           <Text style={styles.back}>← Geri</Text>
         </TouchableOpacity>
         <Text style={styles.navTitle}>Profil</Text>
-        <View style={{ width: 60 }} />
+        {isMe ? (
+          <TouchableOpacity onPress={() => router.push('/profile/edit')}>
+            <Text style={styles.editBtn}>✏️ Düzenle</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 60 }} />
+        )}
       </View>
 
       <ScrollView>
@@ -189,6 +195,7 @@ const styles = StyleSheet.create({
   },
   back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
   navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E' },
+  editBtn: { fontSize: 14, color: '#6C63FF', fontWeight: '600' },
   profileCard: {
     backgroundColor: '#FFFFFF',
     margin: 16,

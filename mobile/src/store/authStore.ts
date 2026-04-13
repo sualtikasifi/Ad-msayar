@@ -15,6 +15,7 @@ interface AuthState {
   logout: () => Promise<void>;
   loadFromStorage: () => Promise<void>;
   clearSession: () => Promise<void>;
+  updateUser: (partial: Partial<PublicUser & { email?: string }>) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -80,5 +81,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       SecureStore.deleteItemAsync('user'),
     ]);
     set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false });
+  },
+
+  updateUser: async (partial) => {
+    const current = get().user;
+    if (!current) return;
+    const updated = { ...current, ...partial };
+    await SecureStore.setItemAsync('user', JSON.stringify(updated));
+    set({ user: updated });
   },
 }));

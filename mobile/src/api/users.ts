@@ -1,0 +1,26 @@
+import { apiClient } from './client';
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getMe(): Promise<UserProfile> {
+  return (await apiClient.get('/users/me')).data;
+}
+
+export async function updateProfile(data: { username?: string; avatar_url?: string | null }): Promise<UserProfile> {
+  return (await apiClient.put('/users/me', data)).data;
+}
+
+export async function uploadAvatar(imageData: string): Promise<{ avatar_url: string }> {
+  return (await apiClient.post('/users/me/avatar', { image_data: imageData })).data;
+}
+
+export async function changePassword(current_password: string, new_password: string): Promise<void> {
+  await apiClient.put('/users/me/password', { current_password, new_password });
+}
