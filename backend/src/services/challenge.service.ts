@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { pool } from '../config/database';
 import type { Challenge, ChallengeParticipant, ParticipantRanking } from '../types';
+import * as achievementService from './achievement.service';
 
 export async function createChallenge(
   creatorId: string,
@@ -238,5 +239,13 @@ export async function completeExpiredChallenges(io: Server): Promise<void> {
       winner: winner ? { userId: winner.userId, username: winner.username, avatarUrl: winner.avatarUrl } : null,
       final_rankings: rankings,
     });
+
+    // Award challenge achievements to all participants
+    for (const participant of rankings) {
+      const isWinner = participant.rank === 1;
+      achievementService
+        .checkChallengeAchievements(participant.userId, challenge.id, isWinner, challenge.type, io)
+        .catch(console.error);
+    }
   }
 }

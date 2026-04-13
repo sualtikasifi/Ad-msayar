@@ -5,6 +5,7 @@ import stepsRoutes from './steps.routes';
 import friendsRoutes from './friends.routes';
 import challengesRoutes from './challenges.routes';
 import leaderboardRoutes from './leaderboard.routes';
+import achievementsRoutes from './achievements.routes';
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use('/steps', stepsRoutes);
 router.use('/friends', friendsRoutes);
 router.use('/challenges', challengesRoutes);
 router.use('/leaderboard', leaderboardRoutes);
+router.use('/achievements', achievementsRoutes);
 
 export default router;

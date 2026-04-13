@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as stepsService from '../services/steps.service';
 import * as challengeService from '../services/challenge.service';
+import * as achievementService from '../services/achievement.service';
 import { getSocketServer } from '../socket';
 
 const syncSchema = z.object({
@@ -26,6 +27,9 @@ export async function syncSteps(req: Request, res: Response): Promise<void> {
     if (io) {
       await challengeService.recalculateUserChallenges(userId, step_date, io);
     }
+
+    // Check and award step-based achievements (fire-and-forget, don't block response)
+    achievementService.checkStepAchievements(userId, step_count, io).catch(console.error);
 
     res.json(record);
   } catch {

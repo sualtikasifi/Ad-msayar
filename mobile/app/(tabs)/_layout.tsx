@@ -52,6 +52,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
         }}
       />
+      <Tabs.Screen
+        name="achievements"
+        options={{
+          title: 'Rozetler',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏅" focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }

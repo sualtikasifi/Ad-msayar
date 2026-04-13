@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as friendsService from '../services/friends.service';
+import * as achievementService from '../services/achievement.service';
 import { getSocketServer } from '../socket';
 
 const requestSchema = z.object({
@@ -73,6 +74,10 @@ export async function acceptRequest(req: Request, res: Response): Promise<void> 
       friendship,
       by: { id: req.userId },
     });
+
+    // Check friend achievements for both users (fire-and-forget)
+    achievementService.checkFriendAchievements(req.userId!, io).catch(console.error);
+    achievementService.checkFriendAchievements(friendship.requester_id, io).catch(console.error);
 
     res.json(friendship);
   } catch (err: unknown) {
