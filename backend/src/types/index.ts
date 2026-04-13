@@ -4,6 +4,7 @@ export interface User {
   email: string;
   password_hash: string;
   avatar_url: string | null;
+  is_guest: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -12,6 +13,7 @@ export interface PublicUser {
   id: string;
   username: string;
   avatar_url: string | null;
+  is_guest: boolean;
 }
 
 export interface Friendship {

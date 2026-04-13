@@ -130,6 +130,11 @@ export default function ProfileScreen() {
         <View style={styles.profileCard}>
           <Avatar username={profile.username} avatarUrl={profile.avatar_url} size={80} />
           <Text style={styles.username}>{profile.username}</Text>
+          {isMe && me?.is_guest && (
+            <View style={styles.guestBadge}>
+              <Text style={styles.guestBadgeText}>👤 Misafir Hesap</Text>
+            </View>
+          )}
 
           {/* Stats */}
           <View style={styles.statsRow}>
@@ -166,12 +171,23 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          {isMe && me?.is_guest && (
+            <TouchableOpacity
+              style={styles.claimBtn}
+              onPress={() => router.push('/profile/claim')}
+            >
+              <Text style={styles.claimText}>🔓 Hesabını Oluştur</Text>
+            </TouchableOpacity>
+          )}
+
           {isMe && (
             <TouchableOpacity
               style={styles.logoutBtn}
               onPress={() => useAuthStore.getState().logout()}
             >
-              <Text style={styles.logoutText}>Çıkış Yap</Text>
+              <Text style={styles.logoutText}>
+                {me?.is_guest ? 'Misafir Oturumunu Kapat' : 'Çıkış Yap'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -246,6 +262,23 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   disabled: { opacity: 0.6 },
+  guestBadge: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginBottom: 12,
+  },
+  guestBadgeText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
+  claimBtn: {
+    backgroundColor: '#6C63FF',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 8,
+  },
+  claimText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   logoutBtn: {
     backgroundColor: '#FEE2E2',
     borderRadius: 12,

@@ -44,6 +44,20 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />}
         showsVerticalScrollIndicator={false}
       >
+        {/* Guest banner */}
+        {user?.is_guest && (
+          <TouchableOpacity
+            style={styles.guestBanner}
+            onPress={() => router.push('/profile/claim')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.guestBannerText}>
+              👤 Misafir olarak kullanıyorsun
+            </Text>
+            <Text style={styles.guestBannerCta}>Hesap oluştur → Verilerini koru</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -175,5 +189,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+  guestBanner: {
+    backgroundColor: '#6C63FF',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  guestBannerText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  guestBannerCta: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 2,
   },
 });

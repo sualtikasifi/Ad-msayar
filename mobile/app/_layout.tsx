@@ -16,7 +16,7 @@ import { AchievementToastManager } from '@/components/AchievementToast';
 import type { Achievement } from '@/api/achievements';
 
 export default function RootLayout() {
-  const { isAuthenticated, isLoading, loadFromStorage } = useAuthStore();
+  const { isAuthenticated, isLoading, loadFromStorage, createGuestSession } = useAuthStore();
   const { addPendingToast } = useAchievementStore();
   const router = useRouter();
   const segments = useSegments();
@@ -31,11 +31,12 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/(auth)/login');
+      // Auto-create a guest session — redirect to login only if it fails
+      createGuestSession().catch(() => router.replace('/(auth)/login'));
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, router]);
+  }, [isAuthenticated, isLoading, segments, router, createGuestSession]);
 
   useEffect(() => {
     if (!isAuthenticated) {

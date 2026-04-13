@@ -16,6 +16,7 @@ interface AuthState {
   loadFromStorage: () => Promise<void>;
   clearSession: () => Promise<void>;
   updateUser: (partial: Partial<PublicUser & { email?: string }>) => Promise<void>;
+  createGuestSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -89,5 +90,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const updated = { ...current, ...partial };
     await SecureStore.setItemAsync('user', JSON.stringify(updated));
     set({ user: updated });
+  },
+
+  createGuestSession: async () => {
+    set({ isLoading: true });
+    try {
+      const { accessToken, refreshToken, user } = await authApi.guestLogin();
+      await Promise.all([
+        SecureStore.setItemAsync('accessToken', accessToken),
+        SecureStore.setItemAsync('refreshToken', refreshToken),
+        SecureStore.setItemAsync('user', JSON.stringify(user)),
+      ]);
+      set({ accessToken, refreshToken, user, isAuthenticated: true });
+    } finally {
+      set({ isLoading: false });
+    }
   },
 }));

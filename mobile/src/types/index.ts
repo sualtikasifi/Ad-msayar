@@ -11,6 +11,7 @@ export interface PublicUser {
   id: string;
   username: string;
   avatar_url: string | null;
+  is_guest?: boolean;
 }
 
 export interface FriendWithSteps extends PublicUser {
