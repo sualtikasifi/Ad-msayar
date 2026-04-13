@@ -1,8 +1,11 @@
+import crypto from 'crypto';
 import { Server } from 'socket.io';
 import { pool } from '../config/database';
 import type { Challenge, ChallengeParticipant, ParticipantRanking } from '../types';
 import * as achievementService from './achievement.service';
 import * as pushService from './push.service';
+
+const MAX_PARTICIPANTS: Record<string, number> = { '1v1': 2, group: 4 };
 
 export async function createChallenge(
   creatorId: string,
@@ -233,6 +236,181 @@ export async function recalculateStandings(challengeId: string, io: Server): Pro
     challengeId,
     rankings,
   });
+}
+
+// ─── Invite Links ─────────────────────────────────────────────────────────
+
+export interface InviteInfo {
+  challengeId: string;
+  title: string | null;
+  type: '1v1' | 'group';
+  status: string;
+  start_date: string;
+  end_date: string;
+  creatorUsername: string;
+  participantCount: number;
+  maxParticipants: number;
+  token: string;
+  expiresAt: string;
+}
+
+function generateToken(): string {
+  // 8-char uppercase alphanumeric (no ambiguous chars like 0/O, 1/I/l)
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let token = '';
+  const bytes = crypto.randomBytes(8);
+  for (let i = 0; i < 8; i++) {
+    token += chars[bytes[i] % chars.length];
+  }
+  return token;
+}
+
+export async function createInviteLink(challengeId: string, userId: string): Promise<{ token: string; expiresAt: string }> {
+  // Verify user is creator
+  const { rows: challRows } = await pool.query<Challenge>(
+    `SELECT * FROM challenges WHERE id = $1`, [challengeId]
+  );
+  if (challRows.length === 0) throw new Error('NOT_FOUND');
+  if (challRows[0].creator_id !== userId) throw new Error('NOT_CREATOR');
+  if (['completed', 'cancelled'].includes(challRows[0].status)) throw new Error('CHALLENGE_ENDED');
+
+  // Return existing non-expired link if available
+  const { rows: existing } = await pool.query(
+    `SELECT token, expires_at FROM challenge_invite_links
+     WHERE challenge_id = $1 AND expires_at > NOW()
+     ORDER BY created_at DESC LIMIT 1`,
+    [challengeId]
+  );
+  if (existing.length > 0) {
+    return { token: existing[0].token, expiresAt: existing[0].expires_at };
+  }
+
+  // Generate unique token
+  let token: string;
+  let attempts = 0;
+  do {
+    token = generateToken();
+    const { rows } = await pool.query(
+      `SELECT id FROM challenge_invite_links WHERE token = $1`, [token]
+    );
+    if (rows.length === 0) break;
+    attempts++;
+  } while (attempts < 5);
+
+  const { rows } = await pool.query(
+    `INSERT INTO challenge_invite_links (challenge_id, created_by, token)
+     VALUES ($1, $2, $3)
+     RETURNING token, expires_at`,
+    [challengeId, userId, token!]
+  );
+  return { token: rows[0].token, expiresAt: rows[0].expires_at };
+}
+
+export async function getInviteInfo(token: string): Promise<InviteInfo> {
+  const { rows } = await pool.query(
+    `SELECT
+       il.token, il.expires_at AS "expiresAt",
+       c.id AS "challengeId", c.title, c.type, c.status,
+       c.start_date, c.end_date,
+       u.username AS "creatorUsername",
+       (SELECT COUNT(*) FROM challenge_participants cp
+        WHERE cp.challenge_id = c.id AND cp.status != 'declined')::int AS "participantCount"
+     FROM challenge_invite_links il
+     JOIN challenges c ON c.id = il.challenge_id
+     JOIN users u ON u.id = il.created_by
+     WHERE il.token = $1`,
+    [token]
+  );
+  if (rows.length === 0) throw new Error('TOKEN_NOT_FOUND');
+  if (new Date(rows[0].expiresAt) < new Date()) throw new Error('TOKEN_EXPIRED');
+
+  const row = rows[0];
+  return {
+    ...row,
+    maxParticipants: MAX_PARTICIPANTS[row.type] ?? 4,
+  };
+}
+
+export async function joinByInviteToken(
+  token: string,
+  userId: string
+): Promise<{ challengeId: string; alreadyMember: boolean }> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Validate token
+    const { rows: linkRows } = await client.query(
+      `SELECT il.challenge_id, c.type, c.status, c.title
+       FROM challenge_invite_links il
+       JOIN challenges c ON c.id = il.challenge_id
+       WHERE il.token = $1 AND il.expires_at > NOW()`,
+      [token]
+    );
+    if (linkRows.length === 0) throw new Error('TOKEN_INVALID');
+
+    const { challenge_id, type, status, title } = linkRows[0];
+
+    if (!['pending', 'active'].includes(status)) throw new Error('CHALLENGE_NOT_JOINABLE');
+
+    // Check if already a participant
+    const { rows: existing } = await client.query(
+      `SELECT status FROM challenge_participants
+       WHERE challenge_id = $1 AND user_id = $2`,
+      [challenge_id, userId]
+    );
+    if (existing.length > 0) {
+      await client.query('COMMIT');
+      return { challengeId: challenge_id, alreadyMember: true };
+    }
+
+    // Check capacity
+    const maxP = MAX_PARTICIPANTS[type] ?? 4;
+    const { rows: countRows } = await client.query(
+      `SELECT COUNT(*) AS cnt FROM challenge_participants
+       WHERE challenge_id = $1 AND status != 'declined'`,
+      [challenge_id]
+    );
+    if (parseInt(countRows[0].cnt) >= maxP) throw new Error('CHALLENGE_FULL');
+
+    // Add user as accepted participant
+    await client.query(
+      `INSERT INTO challenge_participants (challenge_id, user_id, status, joined_at)
+       VALUES ($1, $2, 'accepted', NOW())`,
+      [challenge_id, userId]
+    );
+
+    // Auto-activate if all non-declined are now accepted
+    const { rows: pendingRows } = await client.query(
+      `SELECT COUNT(*) AS pending FROM challenge_participants
+       WHERE challenge_id = $1 AND status = 'invited'`,
+      [challenge_id]
+    );
+    if (parseInt(pendingRows[0].pending) === 0 && status === 'pending') {
+      await client.query(
+        `UPDATE challenges SET status = 'active', updated_at = NOW() WHERE id = $1`,
+        [challenge_id]
+      );
+      // Push: challenge started
+      const { rows: partRows } = await client.query<{ user_id: string }>(
+        `SELECT user_id FROM challenge_participants WHERE challenge_id = $1 AND status = 'accepted'`,
+        [challenge_id]
+      );
+      pushService.notifyChallengeStarted(
+        partRows.map((r) => r.user_id),
+        challenge_id,
+        title
+      ).catch(console.error);
+    }
+
+    await client.query('COMMIT');
+    return { challengeId: challenge_id, alreadyMember: false };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function completeExpiredChallenges(io: Server): Promise<void> {

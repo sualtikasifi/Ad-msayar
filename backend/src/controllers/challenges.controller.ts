@@ -137,3 +137,62 @@ export async function cancelChallenge(req: Request, res: Response): Promise<void
     }
   }
 }
+
+export async function createInviteLink(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await challengeService.createInviteLink(req.params.id, req.userId!);
+    res.json(result);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (msg === 'NOT_FOUND') {
+      res.status(404).json({ error: 'Challenge not found' });
+    } else if (msg === 'NOT_CREATOR') {
+      res.status(403).json({ error: 'Only the creator can generate invite links' });
+    } else if (msg === 'CHALLENGE_ENDED') {
+      res.status(400).json({ error: 'Cannot create invite link for ended challenge' });
+    } else {
+      res.status(500).json({ error: 'Failed to create invite link' });
+    }
+  }
+}
+
+export async function getInviteInfo(req: Request, res: Response): Promise<void> {
+  try {
+    const info = await challengeService.getInviteInfo(req.params.token);
+    res.json(info);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (msg === 'TOKEN_NOT_FOUND') {
+      res.status(404).json({ error: 'Invite link not found' });
+    } else if (msg === 'TOKEN_EXPIRED') {
+      res.status(410).json({ error: 'Invite link has expired' });
+    } else {
+      res.status(500).json({ error: 'Failed to get invite info' });
+    }
+  }
+}
+
+export async function joinByToken(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await challengeService.joinByInviteToken(req.params.token, req.userId!);
+    const io = getSocketServer();
+    if (io) {
+      io.to(`challenge:${result.challengeId}`).emit('challenge:participant_joined', {
+        challengeId: result.challengeId,
+        userId: req.userId,
+      });
+    }
+    res.json({ challengeId: result.challengeId, alreadyMember: result.alreadyMember });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    if (msg === 'TOKEN_INVALID') {
+      res.status(404).json({ error: 'Invite link is invalid or expired' });
+    } else if (msg === 'CHALLENGE_NOT_JOINABLE') {
+      res.status(400).json({ error: 'Challenge has already ended or is cancelled' });
+    } else if (msg === 'CHALLENGE_FULL') {
+      res.status(409).json({ error: 'Challenge is full' });
+    } else {
+      res.status(500).json({ error: 'Failed to join challenge' });
+    }
+  }
+}

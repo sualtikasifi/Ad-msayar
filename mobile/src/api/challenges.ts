@@ -33,3 +33,32 @@ export async function declineChallenge(challengeId: string): Promise<void> {
 export async function cancelChallenge(challengeId: string): Promise<void> {
   await apiClient.put(`/challenges/${challengeId}/cancel`);
 }
+
+export interface InviteInfo {
+  challengeId: string;
+  title: string | null;
+  type: '1v1' | 'group';
+  status: string;
+  start_date: string;
+  end_date: string;
+  creatorUsername: string;
+  participantCount: number;
+  maxParticipants: number;
+  token: string;
+  expiresAt: string;
+}
+
+export async function createInviteLink(challengeId: string): Promise<{ token: string; expiresAt: string }> {
+  const { data } = await apiClient.post(`/challenges/${challengeId}/invite-link`);
+  return data;
+}
+
+export async function getInviteInfo(token: string): Promise<InviteInfo> {
+  const { data } = await apiClient.get(`/challenges/invite/${token}`);
+  return data;
+}
+
+export async function joinByInviteToken(token: string): Promise<{ challengeId: string; alreadyMember: boolean }> {
+  const { data } = await apiClient.post(`/challenges/invite/${token}/join`);
+  return data;
+}

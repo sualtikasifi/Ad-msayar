@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,6 +16,7 @@ import { Avatar } from '@/components/Avatar';
 import { useChallengeStore } from '@/store/challengeStore';
 import { useAuthStore } from '@/store/authStore';
 import { getSocket } from '@/services/socketService';
+import * as challengesApi from '@/api/challenges';
 import type { ParticipantRanking } from '@/types';
 
 const RANK_ICONS = ['🥇', '🥈', '🥉'];
@@ -64,6 +66,7 @@ export default function ChallengeDetailScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   const load = useCallback(() => {
     return loadChallengeDetail(id).catch(console.error);
@@ -144,6 +147,26 @@ export default function ChallengeDetailScreen() {
     setRefreshing(false);
   }
 
+  async function handleShareInvite() {
+    setShareLoading(true);
+    try {
+      const { token } = await challengesApi.createInviteLink(id);
+      const title = challenge?.title || (challenge?.type === '1v1' ? '1v1 Challenge' : 'Grup Challenge');
+      const deepLink = `admsayar://challenge/invite/${token}`;
+      await Share.share({
+        message: `Ad Msayar'da seni "${title}" challenge'ına davet ediyorum! 🏆\n\nKatılmak için: ${deepLink}`,
+        title: 'Challenge Daveti',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg !== 'The user did not share') {
+        Alert.alert('Hata', 'Davet linki oluşturulamadı');
+      }
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
   if (!activeChallengeDetail) {
     return (
       <SafeAreaView style={styles.container}>
@@ -159,6 +182,8 @@ export default function ChallengeDetailScreen() {
   const isInvited = challenge.my_status === 'invited';
   const isActive = challenge.status === 'active';
   const isCompleted = challenge.status === 'completed';
+  const isCreator = challenge.creator_id === user?.id;
+  const canShare = isCreator && !isCompleted && challenge.status !== 'cancelled';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -170,7 +195,15 @@ export default function ChallengeDetailScreen() {
         <Text style={styles.navTitle} numberOfLines={1}>
           {challenge.title || (challenge.type === '1v1' ? '1v1 Challenge' : 'Grup Challenge')}
         </Text>
-        <View style={{ width: 60 }} />
+        {canShare ? (
+          <TouchableOpacity onPress={() => void handleShareInvite()} disabled={shareLoading}>
+            {shareLoading
+              ? <ActivityIndicator size="small" color="#6C63FF" />
+              : <Text style={styles.shareBtn}>🔗 Davet</Text>}
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 60 }} />
+        )}
       </View>
 
       {/* Challenge info */}
@@ -268,6 +301,7 @@ const styles = StyleSheet.create({
   },
   back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
   navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E', flex: 1, textAlign: 'center' },
+  shareBtn: { fontSize: 13, color: '#6C63FF', fontWeight: '700' },
   infoCard: {
     backgroundColor: '#FFFFFF',
     margin: 16,
