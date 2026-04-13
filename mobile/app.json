@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Ad Msayar",
+    "slug": "ad-msayar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "admsayar",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#6C63FF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.admsayar.app",
+      "infoPlist": {
+        "NSMotionUsageDescription": "Adım sayımı için hareket sensörüne erişim gereklidir.",
+        "UIBackgroundModes": ["fetch", "processing"]
+      }
+    },
+    "android": {
+      "package": "com.admsayar.app",
+      "permissions": [
+        "ACTIVITY_RECOGNITION",
+        "FOREGROUND_SERVICE",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sensors",
+      [
+        "expo-background-fetch",
+        {
+          "android": {
+            "foregroundService": {
+              "notificationTitle": "Ad Msayar Çalışıyor",
+              "notificationBody": "Adımlarınız sayılıyor..."
+            }
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

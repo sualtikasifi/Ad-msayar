@@ -1,0 +1,17 @@
+{
+  "name": "ad-msayar",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "mobile",
+    "backend"
+  ],
+  "scripts": {
+    "mobile": "npm run start --workspace=mobile",
+    "backend": "npm run dev --workspace=backend",
+    "dev": "concurrently \"npm run backend\" \"npm run mobile\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
