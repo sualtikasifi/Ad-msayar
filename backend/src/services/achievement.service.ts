@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { pool } from '../config/database';
+import * as pushService from './push.service';
 
 export interface Achievement {
   id: string;
@@ -92,6 +93,9 @@ async function award(
   if (io) {
     io.to(`user:${userId}`).emit('achievement:earned', { achievement });
   }
+
+  // Push notification (fire-and-forget)
+  pushService.notifyAchievementEarned(userId, achievement.name, achievement.emoji, achievement.xp).catch(console.error);
 
   console.log(`🏅 [Achievement] ${userId} earned: ${achievementId}`);
   return achievement;

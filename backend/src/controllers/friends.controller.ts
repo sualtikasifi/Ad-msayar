@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as friendsService from '../services/friends.service';
 import * as achievementService from '../services/achievement.service';
+import * as pushService from '../services/push.service';
 import { getSocketServer } from '../socket';
+import { pool } from '../config/database';
 
 const requestSchema = z.object({
   addressee_id: z.string().uuid(),
@@ -45,12 +47,20 @@ export async function sendFriendRequest(req: Request, res: Response): Promise<vo
   try {
     const friendship = await friendsService.sendFriendRequest(req.userId!, parsed.data.addressee_id);
 
-    // Notify the target user via socket
+    // Notify target user via socket
     const io = getSocketServer();
     io?.to(`user:${parsed.data.addressee_id}`).emit('friend:request_received', {
       friendship,
       from: { id: req.userId },
     });
+
+    // Push notification (fire-and-forget)
+    const { rows } = await pool.query<{ username: string }>(
+      'SELECT username FROM users WHERE id = $1', [req.userId]
+    );
+    if (rows[0]) {
+      pushService.notifyFriendRequest(parsed.data.addressee_id, rows[0].username).catch(console.error);
+    }
 
     res.status(201).json(friendship);
   } catch (err: unknown) {
@@ -78,6 +88,14 @@ export async function acceptRequest(req: Request, res: Response): Promise<void> 
     // Check friend achievements for both users (fire-and-forget)
     achievementService.checkFriendAchievements(req.userId!, io).catch(console.error);
     achievementService.checkFriendAchievements(friendship.requester_id, io).catch(console.error);
+
+    // Push notification to the requester
+    const { rows: myRows } = await pool.query<{ username: string }>(
+      'SELECT username FROM users WHERE id = $1', [req.userId]
+    );
+    if (myRows[0]) {
+      pushService.notifyFriendAccepted(friendship.requester_id, myRows[0].username).catch(console.error);
+    }
 
     res.json(friendship);
   } catch (err: unknown) {

@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as challengeService from '../services/challenge.service';
+import * as pushService from '../services/push.service';
 import { getSocketServer } from '../socket';
+import { pool } from '../config/database';
 
 const createSchema = z.object({
   type: z.enum(['1v1', 'group']),
@@ -40,10 +42,24 @@ export async function createChallenge(req: Request, res: Response): Promise<void
       participant_ids
     );
 
-    // Notify invited participants
+    // Notify invited participants via socket
     const io = getSocketServer();
     for (const pid of participant_ids) {
       io?.to(`user:${pid}`).emit('challenge:invited', { challenge });
+    }
+
+    // Push notification to invited users (fire-and-forget)
+    const { rows: creatorRows } = await pool.query<{ username: string }>(
+      'SELECT username FROM users WHERE id = $1', [req.userId]
+    );
+    if (creatorRows[0]) {
+      pushService.notifyChallengeInvite(
+        participant_ids,
+        creatorRows[0].username,
+        challenge.id,
+        title ?? null,
+        type
+      ).catch(console.error);
     }
 
     res.status(201).json(challenge);

@@ -59,6 +59,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <TabIcon emoji="🏅" focused={focused} />,
         }}
       />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: 'İstatistik',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📈" focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }

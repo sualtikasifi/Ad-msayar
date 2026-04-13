@@ -7,6 +7,11 @@ import { useAuthStore } from '@/store/authStore';
 import { useAchievementStore } from '@/store/achievementStore';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socketService';
 import { registerBackgroundTask } from '@/services/backgroundSteps';
+import {
+  registerForPushNotifications,
+  setupNotificationListeners,
+  getInitialNotification,
+} from '@/services/notificationService';
 import { AchievementToastManager } from '@/components/AchievementToast';
 import type { Achievement } from '@/api/achievements';
 
@@ -40,7 +45,6 @@ export default function RootLayout() {
 
     connectSocket()
       .then((socket) => {
-        // Listen for achievement earned events globally
         socket.on('achievement:earned', ({ achievement }: { achievement: Achievement }) => {
           addPendingToast(achievement);
         });
@@ -49,9 +53,36 @@ export default function RootLayout() {
 
     registerBackgroundTask().catch(console.error);
 
+    // Register push notifications and handle tap-navigation
+    registerForPushNotifications().catch(console.error);
+
+    // Handle tap on notification while app was backgrounded
+    const cleanupListeners = setupNotificationListeners((data) => {
+      if (data.screen === 'challenge' && data.challengeId) {
+        router.push(`/challenge/${data.challengeId}`);
+      } else if (data.screen === 'friends') {
+        router.push('/(tabs)/friends');
+      } else if (data.screen === 'achievements') {
+        router.push('/(tabs)/achievements');
+      }
+    });
+
+    // Handle tap on notification when app was killed
+    getInitialNotification().then((data) => {
+      if (!data) return;
+      if (data.screen === 'challenge' && data.challengeId) {
+        router.push(`/challenge/${data.challengeId}`);
+      } else if (data.screen === 'friends') {
+        router.push('/(tabs)/friends');
+      } else if (data.screen === 'achievements') {
+        router.push('/(tabs)/achievements');
+      }
+    }).catch(console.error);
+
     return () => {
       const socket = getSocket();
       socket?.off('achievement:earned');
+      cleanupListeners();
       disconnectSocket();
     };
   }, [isAuthenticated, addPendingToast]);

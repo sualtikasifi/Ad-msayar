@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { pool } from '../config/database';
 import type { Challenge, ChallengeParticipant, ParticipantRanking } from '../types';
 import * as achievementService from './achievement.service';
+import * as pushService from './push.service';
 
 export async function createChallenge(
   creatorId: string,
@@ -107,6 +108,18 @@ export async function acceptChallenge(challengeId: string, userId: string): Prom
         `UPDATE challenges SET status = 'active', updated_at = NOW() WHERE id = $1`,
         [challengeId]
       );
+      // Notify all accepted participants that challenge has started
+      const { rows: challRows } = await client.query<Challenge>(
+        'SELECT * FROM challenges WHERE id = $1', [challengeId]
+      );
+      const { rows: partRows2 } = await client.query<{ user_id: string }>(
+        `SELECT user_id FROM challenge_participants WHERE challenge_id = $1 AND status = 'accepted'`,
+        [challengeId]
+      );
+      const participantIds = partRows2.map((r) => r.user_id);
+      if (challRows[0]) {
+        pushService.notifyChallengeStarted(participantIds, challengeId, challRows[0].title).catch(console.error);
+      }
     }
 
     await client.query('COMMIT');
@@ -239,6 +252,17 @@ export async function completeExpiredChallenges(io: Server): Promise<void> {
       winner: winner ? { userId: winner.userId, username: winner.username, avatarUrl: winner.avatarUrl } : null,
       final_rankings: rankings,
     });
+
+    // Push notification to all participants
+    if (winner) {
+      const participantIds = rankings.map((r) => r.userId);
+      pushService.notifyChallengeCompleted(
+        participantIds,
+        challenge.id,
+        winner.username,
+        challenge.title
+      ).catch(console.error);
+    }
 
     // Award challenge achievements to all participants
     for (const participant of rankings) {

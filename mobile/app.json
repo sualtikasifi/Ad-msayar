@@ -24,12 +24,15 @@
       "permissions": [
         "ACTIVITY_RECOGNITION",
         "FOREGROUND_SERVICE",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "NOTIFICATIONS",
+        "VIBRATE"
       ]
     },
     "plugins": [
       "expo-router",
       "expo-sensors",
+      "expo-notifications",
       [
         "expo-background-fetch",
         {
