@@ -26,14 +26,25 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Tamamlandı',
   cancelled: 'İptal',
 };
+const MODE_LABELS: Record<string, string> = {
+  standard: '🏆 Standart',
+  duel: '⚔️ Düello',
+  race: '🎯 Hedef Yarışı',
+};
 
-function CountdownTimer({ endDate }: { endDate: string }) {
+// Timer based on end_date (standard/race) or started_at + 24h (duel)
+function CountdownTimer({ endDate, startedAt, isDuel }: { endDate: string; startedAt: string | null; isDuel: boolean }) {
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
     function update() {
       const now = new Date();
-      const end = new Date(endDate + 'T23:59:59');
+      let end: Date;
+      if (isDuel && startedAt) {
+        end = new Date(new Date(startedAt).getTime() + 24 * 60 * 60 * 1000);
+      } else {
+        end = new Date(endDate + 'T23:59:59');
+      }
       const diff = end.getTime() - now.getTime();
       if (diff <= 0) {
         setTimeLeft('Süre doldu');
@@ -46,15 +57,56 @@ function CountdownTimer({ endDate }: { endDate: string }) {
       else setTimeLeft(`${hours}s ${mins}d kaldı`);
     }
     update();
-    const interval = setInterval(update, 60000);
+    const interval = setInterval(update, 30000);
     return () => clearInterval(interval);
-  }, [endDate]);
+  }, [endDate, startedAt, isDuel]);
 
   return <Text style={timerStyles.text}>⏱ {timeLeft}</Text>;
 }
 
 const timerStyles = StyleSheet.create({
   text: { fontSize: 14, color: '#6C63FF', fontWeight: '600' },
+});
+
+// Race progress bar
+function RaceProgressBar({ steps, goal }: { steps: number; goal: number }) {
+  const pct = Math.min(steps / goal, 1);
+  return (
+    <View style={raceStyles.track}>
+      <View style={[raceStyles.fill, { width: `${Math.round(pct * 100)}%` as `${number}%` }]} />
+      <Text style={raceStyles.label}>{steps.toLocaleString()} / {goal.toLocaleString()}</Text>
+    </View>
+  );
+}
+
+const raceStyles = StyleSheet.create({
+  track: {
+    height: 14,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 7,
+    marginTop: 6,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  fill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#6C63FF',
+    borderRadius: 7,
+    minWidth: 4,
+  },
+  label: {
+    position: 'absolute',
+    right: 6,
+    top: 0,
+    bottom: 0,
+    fontSize: 10,
+    color: '#374151',
+    fontWeight: '600',
+    lineHeight: 14,
+  },
 });
 
 export default function ChallengeDetailScreen() {
@@ -67,6 +119,7 @@ export default function ChallengeDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
 
   const load = useCallback(() => {
     return loadChallengeDetail(id).catch(console.error);
@@ -167,6 +220,26 @@ export default function ChallengeDetailScreen() {
     }
   }
 
+  async function handleClaimPenalty() {
+    Alert.alert('Cezayı Onayla', 'Cezanı aldığını onaylıyor musun?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Evet, aldım!',
+        onPress: async () => {
+          setClaimLoading(true);
+          try {
+            await challengesApi.claimPenalty(id);
+            await load();
+          } catch {
+            Alert.alert('Hata', 'İşlem başarısız');
+          } finally {
+            setClaimLoading(false);
+          }
+        },
+      },
+    ]);
+  }
+
   if (!activeChallengeDetail) {
     return (
       <SafeAreaView style={styles.container}>
@@ -178,12 +251,20 @@ export default function ChallengeDetailScreen() {
   }
 
   const challenge = activeChallengeDetail;
-  const myStatus = challenge.rankings.find((r) => r.userId === user?.id) ? 'accepted' : undefined;
   const isInvited = challenge.my_status === 'invited';
   const isActive = challenge.status === 'active';
   const isCompleted = challenge.status === 'completed';
   const isCreator = challenge.creator_id === user?.id;
   const canShare = isCreator && !isCompleted && challenge.status !== 'cancelled';
+  const isDuel = challenge.mode === 'duel';
+  const isRace = challenge.mode === 'race';
+
+  // Penalty logic: user is a loser if challenge completed, user is in rankings at rank > 1
+  const myRanking = challenge.rankings.find((r) => r.userId === user?.id);
+  const isLoser = isCompleted && myRanking !== undefined && myRanking.rank > 1;
+  const hasPenalty = Boolean(challenge.penalty_text);
+  const penaltyClaimed = myRanking?.penaltyClaimed ?? false;
+  const showPenaltySection = hasPenalty && isLoser;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -206,18 +287,52 @@ export default function ChallengeDetailScreen() {
         )}
       </View>
 
-      {/* Challenge info */}
+      {/* Challenge info card */}
       <View style={styles.infoCard}>
         <View style={styles.infoRow}>
           <Text style={styles.statusBadge}>{STATUS_LABELS[challenge.status] || challenge.status}</Text>
           <Text style={styles.typeBadge}>{challenge.type === '1v1' ? '⚔️ 1v1' : '👥 Grup'}</Text>
+          <Text style={styles.modeBadge}>{MODE_LABELS[challenge.mode] || challenge.mode}</Text>
         </View>
-        <Text style={styles.dates}>{challenge.start_date} → {challenge.end_date}</Text>
-        {isActive && <CountdownTimer endDate={challenge.end_date} />}
+        {!isDuel && (
+          <Text style={styles.dates}>{challenge.start_date} → {challenge.end_date}</Text>
+        )}
+        {isDuel && challenge.started_at && (
+          <Text style={styles.dates}>Başladı: {new Date(challenge.started_at).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+        )}
+        {isRace && challenge.step_goal && (
+          <Text style={styles.raceGoal}>🎯 Hedef: {challenge.step_goal.toLocaleString()} adım</Text>
+        )}
+        {isActive && (
+          <CountdownTimer
+            endDate={challenge.end_date}
+            startedAt={challenge.started_at}
+            isDuel={isDuel}
+          />
+        )}
         {isCompleted && challenge.rankings[0] && (
           <Text style={styles.winner}>🏆 Kazanan: {challenge.rankings[0].username}</Text>
         )}
       </View>
+
+      {/* Penalty section — shown to losers after completion */}
+      {showPenaltySection && (
+        <View style={[styles.penaltyCard, penaltyClaimed && styles.penaltyCardClaimed]}>
+          <Text style={styles.penaltyTitle}>{penaltyClaimed ? '✅ Ceza Alındı' : '😅 Cezanı Unutma!'}</Text>
+          <Text style={styles.penaltyText}>"{challenge.penalty_text}"</Text>
+          {!penaltyClaimed && (
+            <TouchableOpacity
+              style={[styles.claimBtn, claimLoading && styles.disabled]}
+              onPress={handleClaimPenalty}
+              disabled={claimLoading}
+            >
+              {claimLoading
+                ? <ActivityIndicator color="#FFFFFF" size="small" />
+                : <Text style={styles.claimBtnText}>Cezamı Kabul Ediyorum</Text>}
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Invite actions */}
       {isInvited && (
@@ -271,6 +386,9 @@ export default function ChallengeDetailScreen() {
                 {isActive && (
                   <Text style={styles.todaySteps}>Bugün: {item.stepsToday.toLocaleString()} adım</Text>
                 )}
+                {isRace && challenge.step_goal && (
+                  <RaceProgressBar steps={item.totalSteps} goal={challenge.step_goal} />
+                )}
               </View>
               {index === 0 && isCompleted && <Text style={styles.winnerBadge}>🏆</Text>}
             </View>
@@ -314,7 +432,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  infoRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  infoRow: { flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
   statusBadge: {
     backgroundColor: '#E8E6FF',
     color: '#6C63FF',
@@ -333,8 +451,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  modeBadge: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   dates: { fontSize: 13, color: '#6B7280' },
+  raceGoal: { fontSize: 13, fontWeight: '600', color: '#6C63FF' },
   winner: { fontSize: 15, fontWeight: '700', color: '#F59E0B' },
+  penaltyCard: {
+    backgroundColor: '#FFF7ED',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  penaltyCardClaimed: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  penaltyTitle: { fontSize: 15, fontWeight: '700', color: '#92400E', marginBottom: 6 },
+  penaltyText: { fontSize: 14, color: '#78350F', fontStyle: 'italic', marginBottom: 12 },
+  claimBtn: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+  claimBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
   inviteActions: {
     backgroundColor: '#FFFBEB',
     marginHorizontal: 16,

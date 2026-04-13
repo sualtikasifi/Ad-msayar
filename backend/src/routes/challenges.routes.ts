@@ -17,6 +17,7 @@ router.get('/:id', challengesCtrl.getChallengeDetail);
 router.put('/:id/accept', challengesCtrl.acceptChallenge);
 router.put('/:id/decline', challengesCtrl.declineChallenge);
 router.put('/:id/cancel', challengesCtrl.cancelChallenge);
+router.put('/:id/claim-penalty', challengesCtrl.claimPenalty);
 router.post('/:id/invite-link', challengesCtrl.createInviteLink);
 
 export default router;

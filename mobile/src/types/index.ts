@@ -43,15 +43,20 @@ export interface DailySteps {
 export type ChallengeType = '1v1' | 'group';
 export type ChallengeStatus = 'pending' | 'active' | 'completed' | 'cancelled';
 export type ParticipantStatus = 'invited' | 'accepted' | 'declined';
+export type ChallengeMode = 'standard' | 'duel' | 'race';
 
 export interface Challenge {
   id: string;
   creator_id: string;
   type: ChallengeType;
+  mode: ChallengeMode;
   status: ChallengeStatus;
   title: string | null;
   start_date: string;
   end_date: string;
+  step_goal: number | null;
+  penalty_text: string | null;
+  started_at: string | null;
   created_at: string;
   updated_at: string;
   my_status?: ParticipantStatus;
@@ -66,6 +71,7 @@ export interface ParticipantRanking {
   totalSteps: number;
   rank: number;
   stepsToday: number;
+  penaltyClaimed?: boolean;
 }
 
 export interface ChallengeDetail extends Challenge {

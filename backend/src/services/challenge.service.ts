@@ -10,20 +10,23 @@ const MAX_PARTICIPANTS: Record<string, number> = { '1v1': 2, group: 4 };
 export async function createChallenge(
   creatorId: string,
   type: '1v1' | 'group',
+  mode: 'standard' | 'duel' | 'race',
   title: string | null,
   startDate: string,
   endDate: string,
-  participantIds: string[]
+  participantIds: string[],
+  stepGoal: number | null,
+  penaltyText: string | null
 ): Promise<Challenge & { participants: ChallengeParticipant[] }> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const { rows } = await client.query<Challenge>(
-      `INSERT INTO challenges (creator_id, type, status, title, start_date, end_date)
-       VALUES ($1, $2, 'pending', $3, $4, $5)
+      `INSERT INTO challenges (creator_id, type, mode, status, title, start_date, end_date, step_goal, penalty_text)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8)
        RETURNING *`,
-      [creatorId, type, title, startDate, endDate]
+      [creatorId, type, mode, title, startDate, endDate, stepGoal, penaltyText]
     );
     const challenge = rows[0];
 
@@ -108,7 +111,7 @@ export async function acceptChallenge(challengeId: string, userId: string): Prom
     );
     if (parseInt(rows[0].pending_count) === 0) {
       await client.query(
-        `UPDATE challenges SET status = 'active', updated_at = NOW() WHERE id = $1`,
+        `UPDATE challenges SET status = 'active', started_at = NOW(), updated_at = NOW() WHERE id = $1`,
         [challengeId]
       );
       // Notify all accepted participants that challenge has started
@@ -162,6 +165,7 @@ export async function getChallengeRankings(challengeId: string): Promise<Partici
        u.avatar_url AS "avatarUrl",
        cp.total_steps AS "totalSteps",
        cp.rank,
+       cp.penalty_claimed AS "penaltyClaimed",
        COALESCE(ds.step_count, 0) AS "stepsToday"
      FROM challenge_participants cp
      JOIN users u ON u.id = cp.user_id
@@ -170,7 +174,7 @@ export async function getChallengeRankings(challengeId: string): Promise<Partici
      ORDER BY cp.total_steps DESC`,
     [challengeId, today]
   );
-  return rows.map((r, i) => ({ ...r, rank: i + 1 }));
+  return rows.map((r, i) => ({ ...r, rank: i + 1, penaltyClaimed: r.penaltyClaimed ?? false }));
 }
 
 export async function recalculateUserChallenges(
@@ -228,6 +232,29 @@ export async function recalculateStandings(challengeId: string, io: Server): Pro
        WHERE challenge_id = $3 AND user_id = $4`,
       [total_steps, i + 1, challengeId, user_id]
     );
+  }
+
+  // Race mode: check if any participant reached the goal
+  if (challenge[0].mode === 'race' && challenge[0].step_goal) {
+    const winner = standings.find(s => Number(s.total_steps) >= challenge[0].step_goal!);
+    if (winner) {
+      await pool.query(
+        `UPDATE challenges SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+        [challengeId]
+      );
+      const finalRankings = await getChallengeRankings(challengeId);
+      io.to(`challenge:${challengeId}`).emit('challenge:completed', {
+        challengeId,
+        winner: { userId: finalRankings[0]?.userId, username: finalRankings[0]?.username, avatarUrl: finalRankings[0]?.avatarUrl },
+        final_rankings: finalRankings,
+      });
+      // Push notification
+      const participantIds = finalRankings.map(r => r.userId);
+      pushService.notifyChallengeCompleted(
+        participantIds, challengeId, finalRankings[0]?.username ?? '', challenge[0].title
+      ).catch(console.error);
+      return;
+    }
   }
 
   // Broadcast updated rankings to the challenge room
@@ -388,7 +415,7 @@ export async function joinByInviteToken(
     );
     if (parseInt(pendingRows[0].pending) === 0 && status === 'pending') {
       await client.query(
-        `UPDATE challenges SET status = 'active', updated_at = NOW() WHERE id = $1`,
+        `UPDATE challenges SET status = 'active', started_at = NOW(), updated_at = NOW() WHERE id = $1`,
         [challenge_id]
       );
       // Push: challenge started
@@ -413,11 +440,29 @@ export async function joinByInviteToken(
   }
 }
 
+export async function claimPenalty(challengeId: string, userId: string): Promise<void> {
+  const { rowCount } = await pool.query(
+    `UPDATE challenge_participants
+     SET penalty_claimed = TRUE
+     WHERE challenge_id = $1 AND user_id = $2
+       AND status = 'accepted'
+       AND EXISTS (
+         SELECT 1 FROM challenges
+         WHERE id = $1 AND status = 'completed' AND penalty_text IS NOT NULL
+       )`,
+    [challengeId, userId]
+  );
+  if (rowCount === 0) throw new Error('NOT_FOUND');
+}
+
 export async function completeExpiredChallenges(io: Server): Promise<void> {
   const { rows } = await pool.query<Challenge>(
     `UPDATE challenges
      SET status = 'completed', updated_at = NOW()
-     WHERE status = 'active' AND end_date < CURRENT_DATE
+     WHERE status = 'active' AND (
+       (mode != 'duel' AND end_date < CURRENT_DATE) OR
+       (mode = 'duel' AND started_at IS NOT NULL AND started_at + INTERVAL '24 hours' < NOW())
+     )
      RETURNING *`
   );
 
@@ -440,6 +485,14 @@ export async function completeExpiredChallenges(io: Server): Promise<void> {
         winner.username,
         challenge.title
       ).catch(console.error);
+
+      // Penalty reminder push to losers
+      if (challenge.penalty_text) {
+        const loserIds = rankings.filter(r => r.rank !== 1).map(r => r.userId);
+        if (loserIds.length > 0) {
+          pushService.sendPenaltyReminder(loserIds, challenge.id, challenge.penalty_text).catch(console.error);
+        }
+      }
     }
 
     // Award challenge achievements to all participants

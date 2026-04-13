@@ -1,11 +1,14 @@
 import { apiClient } from './client';
-import type { Challenge, ChallengeDetail, ChallengeType } from '../types';
+import type { Challenge, ChallengeDetail, ChallengeType, ChallengeMode } from '../types';
 
 export async function createChallenge(params: {
   type: ChallengeType;
+  mode?: ChallengeMode;
   title?: string;
   start_date: string;
-  end_date: string;
+  end_date?: string;
+  step_goal?: number;
+  penalty_text?: string;
   participant_ids: string[];
 }): Promise<Challenge> {
   const { data } = await apiClient.post('/challenges', params);
@@ -61,4 +64,8 @@ export async function getInviteInfo(token: string): Promise<InviteInfo> {
 export async function joinByInviteToken(token: string): Promise<{ challengeId: string; alreadyMember: boolean }> {
   const { data } = await apiClient.post(`/challenges/invite/${token}/join`);
   return data;
+}
+
+export async function claimPenalty(challengeId: string): Promise<void> {
+  await apiClient.put(`/challenges/${challengeId}/claim-penalty`);
 }

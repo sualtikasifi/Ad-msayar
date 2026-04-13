@@ -206,3 +206,18 @@ export async function notifyAchievementEarned(
     { screen: 'achievements' }
   );
 }
+
+export async function sendPenaltyReminder(
+  loserIds: string[],
+  challengeId: string,
+  penaltyText: string
+): Promise<void> {
+  const tokens = await getTokensForUsers(loserIds);
+  if (tokens.length === 0) return;
+  await sendExpoPushNotifications(tokens.map((token) => ({
+    to: token,
+    title: '😅 Challenge Kaybettin!',
+    body: `Cezanı unutma: "${penaltyText}"`,
+    data: { screen: 'challenge', challengeId },
+  })));
+}
