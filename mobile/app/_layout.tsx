@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
 import { useAchievementStore } from '@/store/achievementStore';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socketService';
@@ -91,16 +92,18 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <View style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="challenge" />
-            <Stack.Screen name="profile" />
-          </Stack>
-          {/* Global achievement toast — renders above all screens */}
-          <AchievementToastManager />
-        </View>
+        <ThemeProvider>
+          <View style={{ flex: 1 }}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="challenge" />
+              <Stack.Screen name="profile" />
+            </Stack>
+            {/* Global achievement toast — renders above all screens */}
+            <AchievementToastManager />
+          </View>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

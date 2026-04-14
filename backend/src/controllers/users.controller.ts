@@ -188,3 +188,47 @@ export async function getUserById(req: Request, res: Response): Promise<void> {
   }
   res.json(rows[0]);
 }
+
+export interface NotificationPreferences {
+  challenge_invite: boolean;
+  friend_request: boolean;
+  challenge_started: boolean;
+  daily_reminder: boolean;
+}
+
+const prefsSchema = z.object({
+  challenge_invite: z.boolean().optional(),
+  friend_request: z.boolean().optional(),
+  challenge_started: z.boolean().optional(),
+  daily_reminder: z.boolean().optional(),
+});
+
+export async function getNotificationPreferences(req: Request, res: Response): Promise<void> {
+  const { rows } = await pool.query<{ notification_preferences: NotificationPreferences }>(
+    `SELECT notification_preferences FROM users WHERE id = $1`,
+    [req.userId]
+  );
+  if (rows.length === 0) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  res.json(rows[0].notification_preferences);
+}
+
+export async function updateNotificationPreferences(req: Request, res: Response): Promise<void> {
+  const parsed = prefsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
+  const { rows } = await pool.query<{ notification_preferences: NotificationPreferences }>(
+    `UPDATE users
+     SET notification_preferences = notification_preferences || $1::jsonb,
+         updated_at = NOW()
+     WHERE id = $2
+     RETURNING notification_preferences`,
+    [JSON.stringify(parsed.data), req.userId]
+  );
+  res.json(rows[0].notification_preferences);
+}

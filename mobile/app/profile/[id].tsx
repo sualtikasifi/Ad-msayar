@@ -11,11 +11,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Avatar } from '@/components/Avatar';
+import { AchievementBadge } from '@/components/AchievementBadge';
 import { useAuthStore } from '@/store/authStore';
 import { apiClient } from '@/api/client';
 import * as friendsApi from '@/api/friends';
 import * as stepsApi from '@/api/steps';
+import * as statsApi from '@/api/stats';
+import * as achievementsApi from '@/api/achievements';
+import * as challengesApi from '@/api/challenges';
 import type { PublicUser } from '@/types';
+import type { PersonalRecords } from '@/api/stats';
+import type { AchievementsResponse } from '@/api/achievements';
+
+function StatBox({ value, label, color = '#6C63FF' }: { value: string; label: string; color?: string }) {
+  return (
+    <View style={statStyles.box}>
+      <Text style={[statStyles.value, { color }]}>{value}</Text>
+      <Text style={statStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const statStyles = StyleSheet.create({
+  box: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  value: { fontSize: 18, fontWeight: '800' },
+  label: { fontSize: 10, color: '#9CA3AF', marginTop: 2, textAlign: 'center' },
+});
 
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +47,9 @@ export default function ProfileScreen() {
   const [isFriend, setIsFriend] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [weeklySteps, setWeeklySteps] = useState(0);
+  const [records, setRecords] = useState<PersonalRecords | null>(null);
+  const [achievements, setAchievements] = useState<AchievementsResponse | null>(null);
+  const [challengeWins, setChallengeWins] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -38,22 +62,40 @@ export default function ProfileScreen() {
         const { data: user } = await apiClient.get<PublicUser>(`/users/${id}`);
         setProfile(user);
 
-        // Check friendship
-        const friends = await friendsApi.getFriends();
-        const existing = friends.find((f) => f.id === id);
-        if (existing) {
-          setIsFriend(true);
+        if (isMe) {
+          // Load rich stats for own profile
+          const [recs, ach, challenges] = await Promise.all([
+            statsApi.getPersonalRecords(),
+            achievementsApi.getMyAchievements(),
+            challengesApi.getMyChallenges(),
+          ]);
+          setRecords(recs);
+          setAchievements(ach);
+          const wins = challenges.filter(
+            (c) => c.status === 'completed' && c.my_rank === 1
+          ).length;
+          setChallengeWins(wins);
         } else {
-          const sent = await friendsApi.getSentRequests();
-          const pending = sent.find((r) => r.to_user?.id === id);
-          if (pending) {
-            setRequestSent(true);
-            setFriendshipId(pending.id);
-          }
-        }
+          // Load public stats for other users
+          const [ach, friendsList] = await Promise.all([
+            achievementsApi.getUserAchievements(id),
+            friendsApi.getFriends(),
+          ]);
+          setAchievements(ach);
 
-        // Weekly steps (best effort)
-        if (!isMe) {
+          const existing = friendsList.find((f) => f.id === id);
+          if (existing) {
+            setIsFriend(true);
+          } else {
+            const sent = await friendsApi.getSentRequests();
+            const pending = sent.find((r) => r.to_user?.id === id);
+            if (pending) {
+              setRequestSent(true);
+              setFriendshipId(pending.id);
+            }
+          }
+
+          // Weekly steps (only for friends)
           try {
             const weekStart = new Date();
             weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
@@ -65,14 +107,8 @@ export default function ProfileScreen() {
             const total = (steps as { step_count: number }[]).reduce((s, r) => s + r.step_count, 0);
             setWeeklySteps(total);
           } catch {
-            // not friends yet, skip
+            // not friends yet or API error
           }
-        } else {
-          const weekStart = new Date();
-          weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
-          const today = new Date().toISOString().split('T')[0];
-          const steps = await stepsApi.getStepsRange(weekStart.toISOString().split('T')[0], today);
-          setWeeklySteps(steps.reduce((s, r) => s + r.step_count, 0));
         }
       } catch {
         Alert.alert('Hata', 'Profil yüklenemedi');
@@ -81,7 +117,7 @@ export default function ProfileScreen() {
       }
     }
     load();
-  }, [id, isMe]));  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, isMe])); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleAddFriend() {
     if (!profile) return;
@@ -117,15 +153,20 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <Text style={styles.navTitle}>Profil</Text>
         {isMe ? (
-          <TouchableOpacity onPress={() => router.push('/profile/edit')}>
-            <Text style={styles.editBtn}>✏️ Düzenle</Text>
-          </TouchableOpacity>
+          <View style={styles.navRight}>
+            <TouchableOpacity onPress={() => router.push('/profile/settings')}>
+              <Text style={styles.settingsBtn}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/profile/edit')}>
+              <Text style={styles.editBtn}>✏️</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={{ width: 60 }} />
         )}
       </View>
 
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Avatar & info */}
         <View style={styles.profileCard}>
           <Avatar username={profile.username} avatarUrl={profile.avatar_url} size={80} />
@@ -135,14 +176,70 @@ export default function ProfileScreen() {
               <Text style={styles.guestBadgeText}>👤 Misafir Hesap</Text>
             </View>
           )}
-
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{weeklySteps.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Bu Hafta</Text>
+          {achievements && achievements.total_xp > 0 && (
+            <View style={styles.xpBadge}>
+              <Text style={styles.xpText}>⚡ {achievements.total_xp} XP</Text>
             </View>
-          </View>
+          )}
+
+          {/* Stats row */}
+          <View style={styles.divider} />
+          {isMe && records ? (
+            <View style={styles.statsGrid}>
+              <StatBox
+                value={records.total_steps_all_time >= 1000
+                  ? `${(records.total_steps_all_time / 1000).toFixed(1)}B`
+                  : records.total_steps_all_time.toLocaleString()}
+                label="Toplam Adım"
+                color="#6C63FF"
+              />
+              <View style={styles.statDivider} />
+              <StatBox
+                value={`${records.current_streak}g`}
+                label="Mevcut Seri"
+                color="#EF4444"
+              />
+              <View style={styles.statDivider} />
+              <StatBox
+                value={String(challengeWins)}
+                label="Challenge Kazandı"
+                color="#F59E0B"
+              />
+              <View style={styles.statDivider} />
+              <StatBox
+                value={String(achievements?.earned_count ?? 0)}
+                label="Rozet"
+                color="#10B981"
+              />
+            </View>
+          ) : (
+            <View style={styles.statsGrid}>
+              <StatBox
+                value={weeklySteps.toLocaleString()}
+                label="Bu Hafta"
+                color="#6C63FF"
+              />
+              <View style={styles.statDivider} />
+              <StatBox
+                value={String(achievements?.earned_count ?? 0)}
+                label="Rozet"
+                color="#10B981"
+              />
+            </View>
+          )}
+
+          {/* Recently earned achievements */}
+          {achievements && achievements.recently_earned.length > 0 && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionLabel}>Son Kazanılan Rozetler</Text>
+              <View style={styles.badgeRow}>
+                {achievements.recently_earned.slice(0, 5).map((a) => (
+                  <AchievementBadge key={a.id} achievement={a} size="sm" />
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Friend action */}
           {!isMe && (
@@ -211,7 +308,9 @@ const styles = StyleSheet.create({
   },
   back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
   navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E' },
-  editBtn: { fontSize: 14, color: '#6C63FF', fontWeight: '600' },
+  navRight: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  settingsBtn: { fontSize: 18 },
+  editBtn: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
   profileCard: {
     backgroundColor: '#FFFFFF',
     margin: 16,
@@ -229,17 +328,42 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1A1A2E',
     marginTop: 14,
-    marginBottom: 16,
+    marginBottom: 6,
   },
-  statsRow: {
+  xpBadge: {
+    backgroundColor: '#E8E6FF',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  xpText: { color: '#6C63FF', fontWeight: '700', fontSize: 12 },
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 16,
+  },
+  statsGrid: {
     flexDirection: 'row',
-    gap: 24,
-    marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
   },
-  stat: { alignItems: 'center' },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#6C63FF' },
-  statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  friendAction: { width: '100%' },
+  statDivider: { width: 1, height: 32, backgroundColor: '#F3F4F6' },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignSelf: 'flex-start',
+    flexWrap: 'wrap',
+  },
+  friendAction: { width: '100%', marginTop: 4 },
   friendBadge: {
     backgroundColor: '#D1FAE5',
     borderRadius: 10,
@@ -267,7 +391,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 5,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   guestBadgeText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
   claimBtn: {

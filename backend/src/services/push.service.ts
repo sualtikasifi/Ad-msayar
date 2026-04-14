@@ -34,6 +34,18 @@ async function getTokensForUsers(userIds: string[]): Promise<string[]> {
   return rows.map((r) => r.token);
 }
 
+// Filter userIds to those who have a given notification preference enabled (default: true when column is NULL/missing)
+async function filterByPreference(userIds: string[], prefKey: string): Promise<string[]> {
+  if (userIds.length === 0) return [];
+  const { rows } = await pool.query<{ id: string }>(
+    `SELECT id FROM users
+     WHERE id = ANY($1)
+       AND COALESCE((notification_preferences->>$2)::boolean, true) = true`,
+    [userIds, prefKey]
+  );
+  return rows.map((r) => r.id);
+}
+
 // ─── Expo Push API sender ──────────────────────────────────────────────────
 
 interface ExpoPushMessage {
@@ -127,6 +139,8 @@ export async function notifyFriendRequest(
   toUserId: string,
   fromUsername: string
 ): Promise<void> {
+  const [allowed] = await filterByPreference([toUserId], 'friend_request');
+  if (!allowed) return;
   await notifyUser(
     toUserId,
     '🤝 Yeni Arkadaşlık İsteği',
@@ -154,10 +168,12 @@ export async function notifyChallengeInvite(
   challengeTitle: string | null,
   type: '1v1' | 'group'
 ): Promise<void> {
+  const allowed = await filterByPreference(toUserIds, 'challenge_invite');
+  if (allowed.length === 0) return;
   const typeLabel = type === '1v1' ? '1v1' : 'grup';
   const title = challengeTitle || `${typeLabel} challenge`;
   await notifyUsers(
-    toUserIds,
+    allowed,
     '🏆 Challenge Daveti!',
     `${fromUsername} seni ${title} challenge'ına davet etti`,
     { screen: 'challenge', challengeId }
@@ -169,9 +185,11 @@ export async function notifyChallengeStarted(
   challengeId: string,
   challengeTitle: string | null
 ): Promise<void> {
+  const allowed = await filterByPreference(participantIds, 'challenge_started');
+  if (allowed.length === 0) return;
   const title = challengeTitle || 'Challenge';
   await notifyUsers(
-    participantIds,
+    allowed,
     '🚀 Challenge Başladı!',
     `${title} başladı — adım atmaya başla!`,
     { screen: 'challenge', challengeId }
@@ -220,4 +238,46 @@ export async function sendPenaltyReminder(
     body: `Cezanı unutma: "${penaltyText}"`,
     data: { screen: 'challenge', challengeId },
   })));
+}
+
+// ─── Daily step reminder ───────────────────────────────────────────────────
+
+export async function sendDailyStepReminders(): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+
+  // Find users who:
+  // 1. Have daily_reminder preference enabled (or no preference set)
+  // 2. Have a push token
+  // 3. Have fewer than 10,000 steps today (or no steps entry)
+  const { rows } = await pool.query<{ user_id: string; step_count: number }>(
+    `SELECT pt.user_id, COALESCE(ds.step_count, 0) AS step_count
+     FROM push_tokens pt
+     JOIN users u ON u.id = pt.user_id
+     LEFT JOIN daily_steps ds ON ds.user_id = pt.user_id AND ds.step_date = $1
+     WHERE COALESCE((u.notification_preferences->>'daily_reminder')::boolean, true) = true
+       AND COALESCE(ds.step_count, 0) < 10000
+     GROUP BY pt.user_id, ds.step_count`,
+    [today]
+  );
+
+  if (rows.length === 0) return;
+
+  const messages = await Promise.all(
+    rows.map(async (r) => {
+      const tokens = await getTokensForUser(r.user_id);
+      const stepsLeft = Math.max(10000 - r.step_count, 0);
+      return tokens.filter(isExpoToken).map((token) => ({
+        to: token,
+        title: '👟 Günlük Hatırlatıcı',
+        body: r.step_count === 0
+          ? 'Bugün hiç adım atmadın! Hedefine ulaşmak için harekete geç.'
+          : `${r.step_count.toLocaleString()} adım attın, hedefe ${stepsLeft.toLocaleString()} adım kaldı!`,
+        data: { screen: 'home' },
+        sound: 'default' as const,
+      }));
+    })
+  );
+
+  const flat = messages.flat();
+  if (flat.length > 0) await sendExpoPushNotifications(flat);
 }

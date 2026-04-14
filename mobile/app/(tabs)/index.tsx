@@ -15,6 +15,7 @@ import { ChallengeCard } from '@/components/ChallengeCard';
 import { useAuthStore } from '@/store/authStore';
 import { useChallengeStore } from '@/store/challengeStore';
 import { useStepsStore } from '@/store/stepsStore';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function HomeScreen() {
   const { todaySteps } = usePedometer();
   const { loadTodayFromServer } = useStepsStore();
   const { challenges, loadChallenges } = useChallengeStore();
+  const { colors } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const activeChallenges = challenges.filter((c) => c.status === 'active');
@@ -39,9 +41,9 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Guest banner */}
