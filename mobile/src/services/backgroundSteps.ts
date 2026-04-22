@@ -20,7 +20,7 @@ TaskManager.defineTask(BACKGROUND_STEP_TASK, async () => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // Store locally first
+    // Store latest step count locally for widget and offline use
     await SecureStore.setItemAsync('lastKnownSteps', JSON.stringify({ date: today, count: stepCount }));
 
     // Try to sync via API

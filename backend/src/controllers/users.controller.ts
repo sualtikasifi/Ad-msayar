@@ -11,11 +11,12 @@ const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads', 'avatars');
 const updateSchema = z.object({
   username: z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/).optional(),
   avatar_url: z.string().url().optional().nullable(),
+  daily_step_goal: z.number().int().min(1000).max(100000).optional(),
 });
 
 export async function getMe(req: Request, res: Response): Promise<void> {
   const { rows } = await pool.query<User>(
-    `SELECT id, username, email, avatar_url, created_at, updated_at FROM users WHERE id = $1`,
+    `SELECT id, username, email, avatar_url, daily_step_goal, created_at, updated_at FROM users WHERE id = $1`,
     [req.userId]
   );
   if (rows.length === 0) {
@@ -44,6 +45,10 @@ export async function updateMe(req: Request, res: Response): Promise<void> {
     updates.push(`avatar_url = $${idx++}`);
     values.push(parsed.data.avatar_url);
   }
+  if (parsed.data.daily_step_goal !== undefined) {
+    updates.push(`daily_step_goal = $${idx++}`);
+    values.push(parsed.data.daily_step_goal);
+  }
 
   if (updates.length === 0) {
     res.status(400).json({ error: 'No fields to update' });
@@ -55,7 +60,7 @@ export async function updateMe(req: Request, res: Response): Promise<void> {
 
   try {
     const { rows } = await pool.query<User>(
-      `UPDATE users SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, username, email, avatar_url, created_at, updated_at`,
+      `UPDATE users SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, username, email, avatar_url, daily_step_goal, created_at, updated_at`,
       values
     );
     res.json(rows[0]);

@@ -71,6 +71,7 @@ export interface ParticipantRanking {
   userId: string;
   username: string;
   avatarUrl: string | null;
+  totalXp?: number;
   totalSteps: number;
   rank: number;
   stepsToday: number;

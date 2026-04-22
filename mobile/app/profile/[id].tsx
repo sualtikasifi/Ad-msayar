@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Avatar } from '@/components/Avatar';
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { LevelProgressBar } from '@/components/LevelBadge';
 import { useAuthStore } from '@/store/authStore';
 import { apiClient } from '@/api/client';
 import * as friendsApi from '@/api/friends';
@@ -176,9 +177,9 @@ export default function ProfileScreen() {
               <Text style={styles.guestBadgeText}>👤 Misafir Hesap</Text>
             </View>
           )}
-          {achievements && achievements.total_xp > 0 && (
-            <View style={styles.xpBadge}>
-              <Text style={styles.xpText}>⚡ {achievements.total_xp} XP</Text>
+          {achievements && achievements.total_xp >= 0 && (
+            <View style={{ width: '100%', marginTop: 8 }}>
+              <LevelProgressBar xp={achievements.total_xp} />
             </View>
           )}
 

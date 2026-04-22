@@ -163,6 +163,7 @@ export async function getChallengeRankings(challengeId: string): Promise<Partici
        cp.user_id AS "userId",
        u.username,
        u.avatar_url AS "avatarUrl",
+       u.total_xp AS "totalXp",
        cp.total_steps AS "totalSteps",
        cp.rank,
        cp.penalty_claimed AS "penaltyClaimed",

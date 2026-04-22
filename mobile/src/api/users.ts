@@ -5,6 +5,7 @@ export interface UserProfile {
   username: string;
   email: string;
   avatar_url: string | null;
+  daily_step_goal?: number;
   created_at: string;
   updated_at: string;
 }
@@ -13,8 +14,12 @@ export async function getMe(): Promise<UserProfile> {
   return (await apiClient.get('/users/me')).data;
 }
 
-export async function updateProfile(data: { username?: string; avatar_url?: string | null }): Promise<UserProfile> {
+export async function updateProfile(data: { username?: string; avatar_url?: string | null; daily_step_goal?: number }): Promise<UserProfile> {
   return (await apiClient.put('/users/me', data)).data;
+}
+
+export async function updateStepGoal(goal: number): Promise<UserProfile> {
+  return (await apiClient.put('/users/me', { daily_step_goal: goal })).data;
 }
 
 export async function uploadAvatar(imageData: string): Promise<{ avatar_url: string }> {

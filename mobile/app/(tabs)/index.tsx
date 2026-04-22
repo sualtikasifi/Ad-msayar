@@ -72,7 +72,7 @@ export default function HomeScreen() {
 
         {/* Step Ring */}
         <View style={styles.ringContainer}>
-          <StepRing steps={todaySteps} goal={10000} size={220} />
+          <StepRing steps={todaySteps} goal={user?.daily_step_goal ?? 10000} size={220} />
         </View>
 
         {/* Pending invites */}

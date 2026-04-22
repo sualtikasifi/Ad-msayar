@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getSocket } from '@/services/socketService';
 import * as challengesApi from '@/api/challenges';
 import type { ParticipantRanking } from '@/types';
+import { LevelBadge } from '@/components/LevelBadge';
 
 const RANK_ICONS = ['🥇', '🥈', '🥉'];
 const STATUS_LABELS: Record<string, string> = {
@@ -379,9 +380,12 @@ export default function ChallengeDetailScreen() {
               <Text style={styles.rankIcon}>{rankIcon ?? `${item.rank}`}</Text>
               <Avatar username={item.username} avatarUrl={item.avatarUrl} size={42} />
               <View style={styles.rankInfo}>
-                <Text style={[styles.rankUsername, isMe && styles.meText]}>
-                  {item.username}{isMe ? ' (Sen)' : ''}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.rankUsername, isMe && styles.meText]}>
+                    {item.username}{isMe ? ' (Sen)' : ''}
+                  </Text>
+                  {item.totalXp !== undefined && <LevelBadge xp={item.totalXp} size="sm" />}
+                </View>
                 <Text style={styles.rankSteps}>{item.totalSteps.toLocaleString()} toplam adım</Text>
                 {isActive && (
                   <Text style={styles.todaySteps}>Bugün: {item.stepsToday.toLocaleString()} adım</Text>

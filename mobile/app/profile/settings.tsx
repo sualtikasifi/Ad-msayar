@@ -12,9 +12,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as notificationsApi from '@/api/notifications';
+import * as usersApi from '@/api/users';
 import type { NotificationPreferences } from '@/api/notifications';
 import { useTheme } from '@/context/ThemeContext';
 import type { ThemeMode } from '@/context/ThemeContext';
+import { useAuthStore } from '@/store/authStore';
+
+const STEP_GOAL_PRESETS = [5000, 7500, 10000, 12500, 15000, 20000];
 
 type PrefKey = keyof NotificationPreferences;
 
@@ -54,9 +58,25 @@ const THEME_OPTIONS: { mode: ThemeMode; label: string; emoji: string }[] = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { mode: themeMode, setMode: setThemeMode, colors } = useTheme();
+  const { user, updateUser } = useAuthStore();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<PrefKey | null>(null);
+  const [goalSaving, setGoalSaving] = useState(false);
+  const currentGoal = user?.daily_step_goal ?? 10000;
+
+  async function handleGoalChange(goal: number) {
+    if (goal === currentGoal) return;
+    setGoalSaving(true);
+    try {
+      const updated = await usersApi.updateStepGoal(goal);
+      await updateUser({ daily_step_goal: updated.daily_step_goal });
+    } catch {
+      Alert.alert('Hata', 'Hedef kaydedilemedi');
+    } finally {
+      setGoalSaving(false);
+    }
+  }
 
   useEffect(() => {
     notificationsApi.getNotificationPreferences()
@@ -93,6 +113,35 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.bg }}>
+        {/* Step Goal section */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>👟 Günlük Adım Hedefi</Text>
+        <Text style={[styles.sectionDesc, { color: colors.textMuted }]}>
+          Şu anki hedef: <Text style={{ color: colors.primary, fontWeight: '700' }}>{currentGoal.toLocaleString()} adım</Text>
+        </Text>
+        <View style={styles.goalGrid}>
+          {STEP_GOAL_PRESETS.map((goal) => {
+            const active = goal === currentGoal;
+            return (
+              <TouchableOpacity
+                key={goal}
+                style={[
+                  styles.goalChip,
+                  { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primaryLight : colors.card },
+                  (goalSaving && !active) && { opacity: 0.5 },
+                ]}
+                onPress={() => void handleGoalChange(goal)}
+                disabled={goalSaving}
+              >
+                {goalSaving && active
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={[styles.goalChipText, { color: active ? colors.primary : colors.textSecondary }]}>
+                      {goal >= 1000 ? `${goal / 1000}B` : goal}
+                    </Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Theme section */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>🌗 Tema</Text>
         <View style={[styles.list, { backgroundColor: colors.card, shadowColor: colors.text }]}>
@@ -188,8 +237,23 @@ const styles = StyleSheet.create({
   },
   checkmark: { marginLeft: 'auto', fontSize: 16, fontWeight: '700' },
   loadingContainer: { paddingTop: 60, alignItems: 'center' },
+  goalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 8,
+  },
+  goalChip: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    minWidth: 72,
+    alignItems: 'center',
+  },
+  goalChipText: { fontSize: 15, fontWeight: '700' },
   list: {
-    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',

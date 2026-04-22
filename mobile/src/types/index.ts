@@ -3,6 +3,7 @@ export interface User {
   username: string;
   email: string;
   avatar_url: string | null;
+  daily_step_goal?: number;
   created_at: string;
   updated_at: string;
 }
@@ -12,6 +13,7 @@ export interface PublicUser {
   username: string;
   avatar_url: string | null;
   is_guest?: boolean;
+  daily_step_goal?: number;
 }
 
 export interface FriendWithSteps extends PublicUser {
@@ -72,6 +74,7 @@ export interface ParticipantRanking {
   rank: number;
   stepsToday: number;
   penaltyClaimed?: boolean;
+  totalXp?: number;
 }
 
 export interface ChallengeDetail extends Challenge {

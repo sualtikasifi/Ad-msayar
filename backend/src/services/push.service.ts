@@ -249,14 +249,14 @@ export async function sendDailyStepReminders(): Promise<void> {
   // 1. Have daily_reminder preference enabled (or no preference set)
   // 2. Have a push token
   // 3. Have fewer than 10,000 steps today (or no steps entry)
-  const { rows } = await pool.query<{ user_id: string; step_count: number }>(
-    `SELECT pt.user_id, COALESCE(ds.step_count, 0) AS step_count
+  const { rows } = await pool.query<{ user_id: string; step_count: number; daily_step_goal: number }>(
+    `SELECT pt.user_id, COALESCE(ds.step_count, 0) AS step_count, u.daily_step_goal
      FROM push_tokens pt
      JOIN users u ON u.id = pt.user_id
      LEFT JOIN daily_steps ds ON ds.user_id = pt.user_id AND ds.step_date = $1
      WHERE COALESCE((u.notification_preferences->>'daily_reminder')::boolean, true) = true
-       AND COALESCE(ds.step_count, 0) < 10000
-     GROUP BY pt.user_id, ds.step_count`,
+       AND COALESCE(ds.step_count, 0) < u.daily_step_goal
+     GROUP BY pt.user_id, ds.step_count, u.daily_step_goal`,
     [today]
   );
 
@@ -265,12 +265,13 @@ export async function sendDailyStepReminders(): Promise<void> {
   const messages = await Promise.all(
     rows.map(async (r) => {
       const tokens = await getTokensForUser(r.user_id);
-      const stepsLeft = Math.max(10000 - r.step_count, 0);
+      const goal = r.daily_step_goal ?? 10000;
+      const stepsLeft = Math.max(goal - r.step_count, 0);
       return tokens.filter(isExpoToken).map((token) => ({
         to: token,
         title: '👟 Günlük Hatırlatıcı',
         body: r.step_count === 0
-          ? 'Bugün hiç adım atmadın! Hedefine ulaşmak için harekete geç.'
+          ? `Bugün hiç adım atmadın! ${goal.toLocaleString()} adım hedefe ulaşmak için harekete geç.`
           : `${r.step_count.toLocaleString()} adım attın, hedefe ${stepsLeft.toLocaleString()} adım kaldı!`,
         data: { screen: 'home' },
         sound: 'default' as const,
