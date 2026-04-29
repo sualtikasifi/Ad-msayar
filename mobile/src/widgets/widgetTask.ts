@@ -9,8 +9,6 @@ import React from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { StepWidget } from './StepWidget';
 
-const WIDGET_NAME = 'StepWidget';
-
 async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
   const { widgetAction, renderWidget } = props;
 
@@ -45,4 +43,4 @@ async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
   }
 }
 
-registerWidgetTaskHandler(WIDGET_NAME, widgetTaskHandler);
+registerWidgetTaskHandler(widgetTaskHandler);

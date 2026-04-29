@@ -1,17 +1,7 @@
-/**
- * StepWidget — Android Home Screen Widget
- *
- * Uses react-native-android-widget.
- * After adding this file, run:
- *   npx expo prebuild --platform android
- *   npx expo run:android
- */
-
 import React from 'react';
 import {
   FlexWidget,
   TextWidget,
-  ImageWidget,
 } from 'react-native-android-widget';
 
 export interface StepWidgetData {
@@ -24,6 +14,8 @@ export function StepWidget({ steps, goal, username }: StepWidgetData) {
   const pct = Math.min(Math.round((steps / goal) * 100), 100);
   const stepsLeft = Math.max(goal - steps, 0);
   const isGoalReached = steps >= goal;
+  const fillFlex = Math.max(pct, 1);
+  const remainFlex = Math.max(100 - pct, 0);
 
   return (
     <FlexWidget
@@ -40,12 +32,12 @@ export function StepWidget({ steps, goal, username }: StepWidgetData) {
       {/* Header */}
       <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <TextWidget
-          text="👟 Ad Msayar"
-          style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 'bold' }}
+          text="Ad Msayar"
+          style={{ fontSize: 12, color: '#E0DCFF', fontWeight: 'bold' }}
         />
         <TextWidget
-          text={`${username}`}
-          style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}
+          text={username}
+          style={{ fontSize: 11, color: '#C4BFFF' }}
         />
       </FlexWidget>
 
@@ -56,37 +48,40 @@ export function StepWidget({ steps, goal, username }: StepWidgetData) {
           style={{ fontSize: 32, color: '#FFFFFF', fontWeight: 'bold' }}
         />
         <TextWidget
-          text="adım"
-          style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}
+          text="adim"
+          style={{ fontSize: 13, color: '#E0DCFF' }}
         />
       </FlexWidget>
 
       {/* Progress bar + info */}
-      <FlexWidget style={{ flexDirection: 'column', gap: 4 }}>
-        {/* Background track */}
+      <FlexWidget style={{ flexDirection: 'column' }}>
+        {/* Track: two flex children simulate progress fill */}
         <FlexWidget
           style={{
             height: 8,
-            backgroundColor: 'rgba(255,255,255,0.3)',
             borderRadius: 4,
+            flexDirection: 'row',
             width: 'match_parent',
+            overflow: 'hidden',
+            backgroundColor: '#9D97E8',
           }}
         >
-          {/* Fill */}
           <FlexWidget
             style={{
+              flex: fillFlex,
               height: 8,
               backgroundColor: isGoalReached ? '#10B981' : '#FFFFFF',
-              borderRadius: 4,
-              width: `${pct}%`,
             }}
           />
+          {remainFlex > 0 && (
+            <FlexWidget style={{ flex: remainFlex, height: 8, backgroundColor: '#9D97E8' }} />
+          )}
         </FlexWidget>
 
-        <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
           <TextWidget
-            text={isGoalReached ? '🎉 Hedef tamamlandı!' : `${stepsLeft.toLocaleString('tr-TR')} adım kaldı`}
-            style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)' }}
+            text={isGoalReached ? 'Hedef tamamlandi!' : `${stepsLeft.toLocaleString('tr-TR')} adim kaldi`}
+            style={{ fontSize: 11, color: '#E0DCFF' }}
           />
           <TextWidget
             text={`%${pct}`}

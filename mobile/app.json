@@ -8,6 +8,7 @@
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#6C63FF"
     },
@@ -22,6 +23,10 @@
       }
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#6C63FF"
+      },
       "package": "com.admsayar.app",
       "permissions": [
         "ACTIVITY_RECOGNITION",

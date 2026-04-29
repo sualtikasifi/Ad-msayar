@@ -24,7 +24,7 @@ const LEVELS = [
 ] as const;
 
 export function getLevelInfo(xp: number): LevelInfo {
-  let current = LEVELS[0];
+  let current: typeof LEVELS[number] = LEVELS[0];
   for (const lvl of LEVELS) {
     if (xp >= lvl.minXp) current = lvl;
     else break;
