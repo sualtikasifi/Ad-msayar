@@ -1,3 +1,4 @@
+import 'express-async-errors'; // patches Express 4 to forward async route errors to errorHandler
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -8,6 +9,10 @@ import { errorHandler } from './middleware/errorHandler';
 
 export function createApp(): express.Application {
   const app = express();
+
+  // Behind a single reverse proxy in production (Render). Required so rate
+  // limiting and req.ip use the real client IP from X-Forwarded-For.
+  app.set('trust proxy', 1);
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cors());

@@ -83,7 +83,7 @@ export async function searchUsers(req: Request, res: Response): Promise<void> {
 
   const { rows } = await pool.query<PublicUser>(
     `SELECT id, username, avatar_url FROM users
-     WHERE username ILIKE $1 AND id != $2
+     WHERE username ILIKE $1 AND id != $2 AND is_guest = FALSE
      ORDER BY username ASC
      LIMIT 20`,
     [`${q}%`, req.userId]

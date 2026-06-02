@@ -24,7 +24,7 @@ export async function getDailyLeaderboard(userId: string): Promise<LeaderboardEn
        u.username,
        u.avatar_url AS "avatarUrl",
        COALESCE(ds.step_count, 0) AS "stepCount",
-       RANK() OVER (ORDER BY COALESCE(ds.step_count, 0) DESC) AS rank,
+       RANK() OVER (ORDER BY COALESCE(ds.step_count, 0) DESC)::int AS rank,
        u.id = $1 AS "isCurrentUser"
      FROM friends f
      JOIN users u ON u.id = f.friend_id
@@ -49,7 +49,7 @@ export async function getWeeklyLeaderboard(userId: string): Promise<LeaderboardE
        u.username,
        u.avatar_url AS "avatarUrl",
        COALESCE(SUM(ds.step_count), 0)::int AS "stepCount",
-       RANK() OVER (ORDER BY COALESCE(SUM(ds.step_count), 0) DESC) AS rank,
+       RANK() OVER (ORDER BY COALESCE(SUM(ds.step_count), 0) DESC)::int AS rank,
        u.id = $1 AS "isCurrentUser"
      FROM friends f
      JOIN users u ON u.id = f.friend_id

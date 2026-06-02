@@ -212,28 +212,26 @@ export async function recalculateStandings(challengeId: string, io: Server): Pro
     endDate: challenge[0].end_date,
   };
 
-  // Aggregate steps for each accepted participant over challenge date range
-  const { rows: standings } = await pool.query(
-    `SELECT cp.user_id, COALESCE(SUM(ds.step_count), 0) AS total_steps
-     FROM challenge_participants cp
-     LEFT JOIN daily_steps ds ON ds.user_id = cp.user_id
-       AND ds.step_date BETWEEN $2 AND $3
-     WHERE cp.challenge_id = $1 AND cp.status = 'accepted'
-     GROUP BY cp.user_id
-     ORDER BY total_steps DESC`,
+  // Aggregate steps over the challenge date range, rank, and persist — all in a
+  // single statement (previously this was one UPDATE per participant).
+  const { rows: standings } = await pool.query<{ user_id: string; total_steps: number }>(
+    `WITH standings AS (
+       SELECT cp.user_id,
+              COALESCE(SUM(ds.step_count), 0)::int AS total_steps,
+              ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(ds.step_count), 0) DESC)::int AS rnk
+       FROM challenge_participants cp
+       LEFT JOIN daily_steps ds ON ds.user_id = cp.user_id
+         AND ds.step_date BETWEEN $2 AND $3
+       WHERE cp.challenge_id = $1 AND cp.status = 'accepted'
+       GROUP BY cp.user_id
+     )
+     UPDATE challenge_participants cp
+     SET total_steps = s.total_steps, rank = s.rnk
+     FROM standings s
+     WHERE cp.challenge_id = $1 AND cp.user_id = s.user_id
+     RETURNING cp.user_id, cp.total_steps`,
     [challengeId, startDate, endDate]
   );
-
-  // Update each participant's total_steps and rank
-  for (let i = 0; i < standings.length; i++) {
-    const { user_id, total_steps } = standings[i];
-    await pool.query(
-      `UPDATE challenge_participants
-       SET total_steps = $1, rank = $2
-       WHERE challenge_id = $3 AND user_id = $4`,
-      [total_steps, i + 1, challengeId, user_id]
-    );
-  }
 
   // Race mode: check if any participant reached the goal
   if (challenge[0].mode === 'race' && challenge[0].step_goal) {

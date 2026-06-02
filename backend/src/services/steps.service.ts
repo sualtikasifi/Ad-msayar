@@ -10,7 +10,9 @@ export async function syncSteps(
     `INSERT INTO daily_steps (user_id, step_date, step_count, synced_at)
      VALUES ($1, $2, $3, NOW())
      ON CONFLICT (user_id, step_date)
-     DO UPDATE SET step_count = EXCLUDED.step_count, synced_at = NOW()
+     -- Steps only ever grow during a day; never let a stale/lower sync (race
+     -- between foreground & background, multiple devices) overwrite a higher count.
+     DO UPDATE SET step_count = GREATEST(daily_steps.step_count, EXCLUDED.step_count), synced_at = NOW()
      RETURNING *`,
     [userId, stepDate, stepCount]
   );
