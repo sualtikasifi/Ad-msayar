@@ -11,11 +11,14 @@ CREATE TABLE IF NOT EXISTS friendships (
   created_at   TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
 
-  CONSTRAINT no_self_friend   CHECK (requester_id <> addressee_id),
-  CONSTRAINT unique_friendship UNIQUE (
-    LEAST(requester_id::text, addressee_id::text),
-    GREATEST(requester_id::text, addressee_id::text)
-  )
+  CONSTRAINT no_self_friend   CHECK (requester_id <> addressee_id)
+);
+
+-- A UNIQUE table constraint cannot use expressions (LEAST/GREATEST), so we use
+-- a unique expression index to prevent duplicate friendships in either direction.
+CREATE UNIQUE INDEX IF NOT EXISTS unique_friendship ON friendships (
+  LEAST(requester_id::text, addressee_id::text),
+  GREATEST(requester_id::text, addressee_id::text)
 );
 
 CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id);

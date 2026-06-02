@@ -1,0 +1,28 @@
+# Render Blueprint — backend'i otomatik deploy eder.
+# Veritabanı olarak Neon (ücretsiz, kalıcı) kullanılır; DATABASE_URL'i Render
+# panelinde "secret" olarak girersin (sync: false).
+# Render panelinde: New → Blueprint → bu repoyu seç.
+services:
+  - type: web
+    name: admsayar-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    # Önce migration'ları çalıştırır, sonra sunucuyu başlatır
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL          # Neon connection string'i buraya (Render panelinde) gir
+        sync: false
+      - key: JWT_SECRET            # Render otomatik güçlü değer üretir
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: NODE_VERSION
+        value: "20"
