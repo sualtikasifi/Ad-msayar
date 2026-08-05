@@ -293,7 +293,7 @@ export default function NewChallengeScreen() {
                 style={[styles.friendRow, isSelected && styles.selectedRow]}
                 onPress={() => toggleFriend(f.id)}
               >
-                <Avatar username={f.username} avatarUrl={f.avatar_url} size={40} />
+                <Avatar avatarId={f.avatar_id} size={40} />
                 <View style={styles.friendInfo}>
                   <Text style={styles.friendName}>{f.username}</Text>
                   <Text style={styles.friendSteps}>{f.today_steps.toLocaleString()} adım bugün</Text>

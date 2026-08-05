@@ -162,7 +162,7 @@ export async function getChallengeRankings(challengeId: string): Promise<Partici
     `SELECT
        cp.user_id AS "userId",
        u.username,
-       u.avatar_url AS "avatarUrl",
+       u.avatar_id AS "avatarId",
        u.total_xp AS "totalXp",
        cp.total_steps AS "totalSteps",
        cp.rank,
@@ -244,7 +244,7 @@ export async function recalculateStandings(challengeId: string, io: Server): Pro
       const finalRankings = await getChallengeRankings(challengeId);
       io.to(`challenge:${challengeId}`).emit('challenge:completed', {
         challengeId,
-        winner: { userId: finalRankings[0]?.userId, username: finalRankings[0]?.username, avatarUrl: finalRankings[0]?.avatarUrl },
+        winner: { userId: finalRankings[0]?.userId, username: finalRankings[0]?.username, avatarId: finalRankings[0]?.avatarId },
         final_rankings: finalRankings,
       });
       // Push notification
@@ -471,7 +471,7 @@ export async function completeExpiredChallenges(io: Server): Promise<void> {
 
     io.to(`challenge:${challenge.id}`).emit('challenge:completed', {
       challengeId: challenge.id,
-      winner: winner ? { userId: winner.userId, username: winner.username, avatarUrl: winner.avatarUrl } : null,
+      winner: winner ? { userId: winner.userId, username: winner.username, avatarId: winner.avatarId } : null,
       final_rankings: rankings,
     });
 

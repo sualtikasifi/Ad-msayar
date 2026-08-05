@@ -5,7 +5,7 @@ export async function getFriends(userId: string): Promise<(PublicUser & { today_
   const today = new Date().toISOString().split('T')[0];
   const { rows } = await pool.query(
     `SELECT
-       u.id, u.username, u.avatar_url,
+       u.id, u.username, u.avatar_id,
        COALESCE(ds.step_count, 0) AS today_steps
      FROM friendships f
      JOIN users u ON (
@@ -22,7 +22,7 @@ export async function getFriends(userId: string): Promise<(PublicUser & { today_
 
 export async function getPendingRequests(userId: string): Promise<(Friendship & { from_user: PublicUser })[]> {
   const { rows } = await pool.query(
-    `SELECT f.*, json_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url) AS from_user
+    `SELECT f.*, json_build_object('id', u.id, 'username', u.username, 'avatar_id', u.avatar_id) AS from_user
      FROM friendships f
      JOIN users u ON u.id = f.requester_id
      WHERE f.addressee_id = $1 AND f.status = 'pending'
@@ -34,7 +34,7 @@ export async function getPendingRequests(userId: string): Promise<(Friendship & 
 
 export async function getSentRequests(userId: string): Promise<(Friendship & { to_user: PublicUser })[]> {
   const { rows } = await pool.query(
-    `SELECT f.*, json_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url) AS to_user
+    `SELECT f.*, json_build_object('id', u.id, 'username', u.username, 'avatar_id', u.avatar_id) AS to_user
      FROM friendships f
      JOIN users u ON u.id = f.addressee_id
      WHERE f.requester_id = $1 AND f.status = 'pending'

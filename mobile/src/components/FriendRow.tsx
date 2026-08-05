@@ -5,13 +5,13 @@ import { Avatar } from './Avatar';
 interface FriendRowProps {
   id: string;
   username: string;
-  avatarUrl: string | null;
+  avatarId: number;
   todaySteps?: number;
   rightAction?: React.ReactNode;
   onPress?: () => void;
 }
 
-export function FriendRow({ username, avatarUrl, todaySteps, rightAction, onPress }: FriendRowProps) {
+export function FriendRow({ username, avatarId, todaySteps, rightAction, onPress }: FriendRowProps) {
   return (
     <TouchableOpacity
       style={styles.row}
@@ -19,7 +19,7 @@ export function FriendRow({ username, avatarUrl, todaySteps, rightAction, onPres
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
     >
-      <Avatar username={username} avatarUrl={avatarUrl} size={44} />
+      <Avatar avatarId={avatarId} size={44} />
       <View style={styles.info}>
         <Text style={styles.username}>{username}</Text>
         {todaySteps !== undefined && (

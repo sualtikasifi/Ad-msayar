@@ -3,7 +3,7 @@ export interface User {
   username: string;
   email: string;
   password_hash: string;
-  avatar_url: string | null;
+  avatar_id: number;
   is_guest: boolean;
   created_at: Date;
   updated_at: Date;
@@ -12,7 +12,7 @@ export interface User {
 export interface PublicUser {
   id: string;
   username: string;
-  avatar_url: string | null;
+  avatar_id: number;
   is_guest: boolean;
 }
 
@@ -70,7 +70,7 @@ export interface ChallengeParticipant {
 export interface ParticipantRanking {
   userId: string;
   username: string;
-  avatarUrl: string | null;
+  avatarId: number;
   totalXp?: number;
   totalSteps: number;
   rank: number;

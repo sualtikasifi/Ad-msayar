@@ -8,21 +8,19 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '@/store/authStore';
 import * as usersApi from '@/api/users';
 import { Avatar } from '@/components/Avatar';
+import { AVATAR_IDS } from '@/constants/avatars';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuthStore();
 
   const [username, setUsername] = useState(user?.username ?? '');
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState('');
@@ -35,70 +33,21 @@ export default function EditProfileScreen() {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
 
-  async function pickImage(source: 'library' | 'camera') {
-    let result;
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-      base64: true,
-    };
-
+  async function handleSelectAvatar(avatarId: number) {
+    if (avatarId === user?.avatar_id || avatarSaving) return;
+    setAvatarSaving(true);
     try {
-      if (source === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('İzin Gerekli', 'Kamera erişimi için izin vermeniz gerekiyor.');
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync(options);
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('İzin Gerekli', 'Fotoğraf kütüphanesine erişim için izin vermeniz gerekiyor.');
-          return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync(options);
-      }
-
-      if (result.canceled || !result.assets[0]) return;
-
-      const asset = result.assets[0];
-      if (!asset.base64) {
-        Alert.alert('Hata', 'Görsel okunamadı.');
-        return;
-      }
-
-      const mimeType = asset.mimeType ?? 'image/jpeg';
-      const imageData = `data:${mimeType};base64,${asset.base64}`;
-
-      setAvatarUploading(true);
-      try {
-        const { avatar_url } = await usersApi.uploadAvatar(imageData);
-        await updateUser({ avatar_url });
-        setAvatarPreview(avatar_url);
-        setProfileSuccess('Profil fotoğrafı güncellendi');
-        setProfileError('');
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : '';
-        setProfileError(msg || 'Fotoğraf yüklenemedi');
-      } finally {
-        setAvatarUploading(false);
-      }
+      const updated = await usersApi.updateProfile({ avatar_id: avatarId });
+      await updateUser({ avatar_id: updated.avatar_id });
+      setProfileSuccess('Profil fotoğrafı güncellendi');
+      setProfileError('');
     } catch {
-      Alert.alert('Hata', 'Fotoğraf seçilemedi');
+      setProfileError('Fotoğraf güncellenemedi');
+    } finally {
+      setAvatarSaving(false);
     }
-  }
-
-  function showImagePicker() {
-    Alert.alert('Fotoğraf Seç', 'Kaynak seçin', [
-      { text: 'Kütüphane', onPress: () => pickImage('library') },
-      { text: 'Kamera', onPress: () => pickImage('camera') },
-      { text: 'İptal', style: 'cancel' },
-    ]);
   }
 
   async function handleSaveProfile() {
@@ -166,8 +115,6 @@ export default function EditProfileScreen() {
     }
   }
 
-  const displayAvatarUrl = avatarPreview ?? user?.avatar_url ?? null;
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Nav */}
@@ -184,28 +131,26 @@ export default function EditProfileScreen() {
         {/* ── Avatar ───────────────────────────────────── */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Profil Fotoğrafı</Text>
-          <View style={styles.avatarRow}>
-            {avatarUploading ? (
-              <View style={styles.avatarPlaceholder}>
-                <ActivityIndicator color="#6C63FF" />
-              </View>
-            ) : displayAvatarUrl ? (
-              <Image
-                source={{ uri: displayAvatarUrl }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Avatar username={user?.username ?? '?'} avatarUrl={null} size={80} />
-            )}
-            <TouchableOpacity
-              style={[styles.changePhotoBtn, avatarUploading && styles.disabled]}
-              onPress={showImagePicker}
-              disabled={avatarUploading}
-            >
-              <Text style={styles.changePhotoText}>
-                {avatarUploading ? 'Yükleniyor…' : 'Fotoğraf Değiştir'}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.avatarPickerRow}>
+            {AVATAR_IDS.map((id) => {
+              const selected = id === user?.avatar_id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.avatarOption, selected && styles.avatarOptionSelected]}
+                  onPress={() => handleSelectAvatar(id)}
+                  disabled={avatarSaving}
+                  activeOpacity={0.7}
+                >
+                  <Avatar avatarId={id} size={56} />
+                  {avatarSaving && selected && (
+                    <View style={styles.avatarOptionLoading}>
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -343,34 +288,29 @@ const styles = StyleSheet.create({
     color: '#1A1A2E',
     marginBottom: 16,
   },
-  avatarRow: {
-    alignItems: 'center',
-    gap: 14,
+  avatarPickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E5E7EB',
-  },
-  avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F3F4F6',
+  avatarOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  changePhotoBtn: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  avatarOptionSelected: {
+    borderColor: '#6C63FF',
   },
-  changePhotoText: {
-    color: '#6C63FF',
-    fontWeight: '600',
-    fontSize: 14,
+  avatarOptionLoading: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   label: {
     fontSize: 13,

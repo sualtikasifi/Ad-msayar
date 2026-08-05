@@ -2,7 +2,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  avatar_url: string | null;
+  avatar_id: number;
   daily_step_goal?: number;
   created_at: string;
   updated_at: string;
@@ -11,7 +11,7 @@ export interface User {
 export interface PublicUser {
   id: string;
   username: string;
-  avatar_url: string | null;
+  avatar_id: number;
   is_guest?: boolean;
   daily_step_goal?: number;
 }
@@ -69,7 +69,7 @@ export interface Challenge {
 export interface ParticipantRanking {
   userId: string;
   username: string;
-  avatarUrl: string | null;
+  avatarId: number;
   totalSteps: number;
   rank: number;
   stepsToday: number;
@@ -84,7 +84,7 @@ export interface ChallengeDetail extends Challenge {
 export interface LeaderboardEntry {
   userId: string;
   username: string;
-  avatarUrl: string | null;
+  avatarId: number;
   stepCount: number;
   rank: number;
   isCurrentUser: boolean;

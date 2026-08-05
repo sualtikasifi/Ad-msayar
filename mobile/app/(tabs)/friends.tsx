@@ -21,7 +21,7 @@ type TabType = 'friends' | 'requests';
 export default function FriendsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('friends');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ id: string; username: string; avatar_url: string | null }[]>([]);
+  const [searchResults, setSearchResults] = useState<{ id: string; username: string; avatar_id: number }[]>([]);
   const [searching, setSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -98,7 +98,7 @@ export default function FriendsScreen() {
         <View style={styles.searchResults}>
           {searchResults.map((u) => (
             <View key={u.id} style={styles.searchRow}>
-              <Avatar username={u.username} avatarUrl={u.avatar_url} size={36} />
+              <Avatar avatarId={u.avatar_id} size={36} />
               <Text style={styles.searchUsername}>{u.username}</Text>
               <TouchableOpacity
                 style={styles.addButton}
@@ -140,7 +140,7 @@ export default function FriendsScreen() {
             <FriendRow
               id={item.id}
               username={item.username}
-              avatarUrl={item.avatar_url}
+              avatarId={item.avatar_id}
               todaySteps={item.today_steps}
             />
           )}
@@ -161,7 +161,7 @@ export default function FriendsScreen() {
             <FriendRow
               id={item.id}
               username={item.from_user?.username ?? 'Bilinmiyor'}
-              avatarUrl={item.from_user?.avatar_url ?? null}
+              avatarId={item.from_user?.avatar_id ?? 1}
               rightAction={
                 <View style={styles.requestActions}>
                   <TouchableOpacity

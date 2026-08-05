@@ -25,7 +25,7 @@ export function LeaderboardRow({ entry }: LeaderboardRowProps) {
         )}
       </View>
 
-      <Avatar username={entry.username} avatarUrl={entry.avatarUrl} size={38} />
+      <Avatar avatarId={entry.avatarId} size={38} />
 
       <View style={styles.info}>
         <Text style={[styles.username, entry.isCurrentUser && styles.currentUser]}>
