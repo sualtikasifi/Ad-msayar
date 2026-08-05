@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -20,6 +21,10 @@ export function createApp(): express.Application {
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  app.get('/privacy', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
   });
 
   app.use('/api/v1', routes);

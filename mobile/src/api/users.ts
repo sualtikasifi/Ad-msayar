@@ -25,3 +25,7 @@ export async function updateStepGoal(goal: number): Promise<UserProfile> {
 export async function changePassword(current_password: string, new_password: string): Promise<void> {
   await apiClient.put('/users/me/password', { current_password, new_password });
 }
+
+export async function deleteAccount(password?: string): Promise<void> {
+  await apiClient.delete('/users/me', { data: { password } });
+}
