@@ -199,6 +199,27 @@ export default function SettingsScreen() {
             ))}
           </View>
         )}
+
+        {/* Danger zone */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>⚠️ Tehlikeli Bölge</Text>
+        <View style={[styles.list, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/profile/delete-account')}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowEmoji}>🗑️</Text>
+              <View style={styles.rowText}>
+                <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Hesabımı Sil</Text>
+                <Text style={[styles.rowDesc, { color: colors.textMuted }]}>
+                  Tüm verilerini kalıcı olarak siler
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );

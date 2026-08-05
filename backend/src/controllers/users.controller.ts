@@ -126,6 +126,46 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   res.json({ message: 'Password updated successfully' });
 }
 
+const deleteAccountSchema = z.object({
+  password: z.string().min(1).optional(),
+});
+
+export async function deleteMe(req: Request, res: Response): Promise<void> {
+  const parsed = deleteAccountSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
+  const { rows } = await pool.query<Pick<User, 'password_hash' | 'is_guest'>>(
+    `SELECT password_hash, is_guest FROM users WHERE id = $1`,
+    [req.userId]
+  );
+  if (rows.length === 0) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+
+  // Guest accounts have no user-known password — anyone holding the
+  // session token may delete them outright. Real accounts must confirm.
+  if (!rows[0].is_guest) {
+    if (!parsed.data.password) {
+      res.status(400).json({ error: 'Password confirmation required' });
+      return;
+    }
+    const valid = await bcrypt.compare(parsed.data.password, rows[0].password_hash);
+    if (!valid) {
+      res.status(401).json({ error: 'Password is incorrect' });
+      return;
+    }
+  }
+
+  // ON DELETE CASCADE on every users(id) foreign key removes the user's
+  // friendships, steps, challenges, achievements, tokens, etc.
+  await pool.query(`DELETE FROM users WHERE id = $1`, [req.userId]);
+  res.status(204).send();
+}
+
 export async function getUserById(req: Request, res: Response): Promise<void> {
   const { rows } = await pool.query<PublicUser>(
     `SELECT id, username, avatar_id FROM users WHERE id = $1`,
