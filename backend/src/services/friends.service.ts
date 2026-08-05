@@ -1,8 +1,9 @@
 import { pool } from '../config/database';
+import { todayInAppTimezone } from '../utils/date';
 import type { Friendship, PublicUser } from '../types';
 
 export async function getFriends(userId: string): Promise<(PublicUser & { today_steps: number })[]> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInAppTimezone();
   const { rows } = await pool.query(
     `SELECT
        u.id, u.username, u.avatar_id,

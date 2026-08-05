@@ -1,4 +1,5 @@
 import { pool } from '../config/database';
+import { todayInAppTimezone } from '../utils/date';
 import type { DailySteps } from '../types';
 
 export async function syncSteps(
@@ -20,7 +21,7 @@ export async function syncSteps(
 }
 
 export async function getTodaySteps(userId: string): Promise<number> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInAppTimezone();
   const { rows } = await pool.query<{ step_count: number }>(
     `SELECT step_count FROM daily_steps WHERE user_id = $1 AND step_date = $2`,
     [userId, today]

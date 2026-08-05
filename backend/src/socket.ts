@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { verifyAccessToken } from './config/jwt';
+import { pool } from './config/database';
 
 let io: Server | null = null;
 
@@ -34,7 +35,13 @@ export function initSocket(server: import('http').Server): Server {
     // Auto-join personal room
     socket.join(`user:${userId}`);
 
-    socket.on('challenge:join', ({ challengeId }: { challengeId: string }) => {
+    socket.on('challenge:join', async ({ challengeId }: { challengeId: string }) => {
+      if (!challengeId) return;
+      const { rows } = await pool.query(
+        `SELECT 1 FROM challenge_participants WHERE challenge_id = $1 AND user_id = $2`,
+        [challengeId, userId]
+      );
+      if (rows.length === 0) return; // not a participant — refuse to leak room events
       socket.join(`challenge:${challengeId}`);
     });
 

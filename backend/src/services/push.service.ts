@@ -1,5 +1,6 @@
 import https from 'https';
 import { pool } from '../config/database';
+import { todayInAppTimezone } from '../utils/date';
 
 // ─── Token management ──────────────────────────────────────────────────────
 
@@ -243,7 +244,7 @@ export async function sendPenaltyReminder(
 // ─── Daily step reminder ───────────────────────────────────────────────────
 
 export async function sendDailyStepReminders(): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInAppTimezone();
 
   // Find users who:
   // 1. Have daily_reminder preference enabled (or no preference set)

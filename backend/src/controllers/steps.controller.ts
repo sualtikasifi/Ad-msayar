@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as stepsService from '../services/steps.service';
 import * as challengeService from '../services/challenge.service';
 import * as achievementService from '../services/achievement.service';
+import { todayInAppTimezone } from '../utils/date';
 import { getSocketServer } from '../socket';
 
 const syncSchema = z.object({
@@ -40,7 +41,7 @@ export async function syncSteps(req: Request, res: Response): Promise<void> {
 export async function getTodaySteps(req: Request, res: Response): Promise<void> {
   try {
     const stepCount = await stepsService.getTodaySteps(req.userId!);
-    res.json({ step_count: stepCount, date: new Date().toISOString().split('T')[0] });
+    res.json({ step_count: stepCount, date: todayInAppTimezone() });
   } catch {
     res.status(500).json({ error: 'Failed to get steps' });
   }

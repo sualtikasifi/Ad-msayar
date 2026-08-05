@@ -1,4 +1,5 @@
 import { pool } from '../config/database';
+import { todayInAppTimezone } from '../utils/date';
 
 export interface LeaderboardEntry {
   userId: string;
@@ -10,7 +11,7 @@ export interface LeaderboardEntry {
 }
 
 export async function getDailyLeaderboard(userId: string): Promise<LeaderboardEntry[]> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInAppTimezone();
 
   const { rows } = await pool.query(
     `WITH friends AS (
