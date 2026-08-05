@@ -69,18 +69,24 @@ async function award(
   if (achRows.length === 0) return null;
   const achievement = achRows[0];
 
-  // Insert and add XP in a transaction
+  // Insert and add XP in a transaction. Only credit XP if this call actually
+  // won the insert — concurrent callers racing on the same achievement must
+  // not both add XP once the unique constraint dedupes the row.
   const client = await pool.connect();
+  let awarded = false;
   try {
     await client.query('BEGIN');
-    await client.query(
+    const { rowCount } = await client.query(
       `INSERT INTO user_achievements (user_id, achievement_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [userId, achievementId]
     );
-    await client.query(
-      `UPDATE users SET total_xp = total_xp + $1 WHERE id = $2`,
-      [achievement.xp, userId]
-    );
+    awarded = (rowCount ?? 0) > 0;
+    if (awarded) {
+      await client.query(
+        `UPDATE users SET total_xp = total_xp + $1 WHERE id = $2`,
+        [achievement.xp, userId]
+      );
+    }
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -88,6 +94,7 @@ async function award(
   } finally {
     client.release();
   }
+  if (!awarded) return null;
 
   // Notify via socket
   if (io) {

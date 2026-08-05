@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { pool } from '../config/database';
 import type { Challenge, ChallengeParticipant, ParticipantRanking } from '../types';
 import * as achievementService from './achievement.service';
+import { todayInAppTimezone } from '../utils/date';
 import * as pushService from './push.service';
 
 const MAX_PARTICIPANTS: Record<string, number> = { '1v1': 2, group: 4 };
@@ -157,7 +158,7 @@ export async function cancelChallenge(challengeId: string, userId: string): Prom
 }
 
 export async function getChallengeRankings(challengeId: string): Promise<ParticipantRanking[]> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInAppTimezone();
   const { rows } = await pool.query(
     `SELECT
        cp.user_id AS "userId",
@@ -365,12 +366,15 @@ export async function joinByInviteToken(
   try {
     await client.query('BEGIN');
 
-    // Validate token
+    // Validate token. Locks the challenge row so concurrent joins on the
+    // same invite link serialize instead of both passing the capacity
+    // check below before either has inserted their participant row.
     const { rows: linkRows } = await client.query(
       `SELECT il.challenge_id, c.type, c.status, c.title
        FROM challenge_invite_links il
        JOIN challenges c ON c.id = il.challenge_id
-       WHERE il.token = $1 AND il.expires_at > NOW()`,
+       WHERE il.token = $1 AND il.expires_at > NOW()
+       FOR UPDATE OF c`,
       [token]
     );
     if (linkRows.length === 0) throw new Error('TOKEN_INVALID');
