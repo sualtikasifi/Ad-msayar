@@ -378,7 +378,7 @@ export default function ChallengeDetailScreen() {
           return (
             <View style={[styles.rankRow, isMe && styles.myRow]}>
               <Text style={styles.rankIcon}>{rankIcon ?? `${item.rank}`}</Text>
-              <Avatar username={item.username} avatarUrl={item.avatarUrl} size={42} />
+              <Avatar avatarId={item.avatarId} size={42} />
               <View style={styles.rankInfo}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={[styles.rankUsername, isMe && styles.meText]}>

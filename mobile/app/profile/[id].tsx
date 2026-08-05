@@ -170,7 +170,7 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Avatar & info */}
         <View style={styles.profileCard}>
-          <Avatar username={profile.username} avatarUrl={profile.avatar_url} size={80} />
+          <Avatar avatarId={profile.avatar_id} size={80} />
           <Text style={styles.username}>{profile.username}</Text>
           {isMe && me?.is_guest && (
             <View style={styles.guestBadge}>

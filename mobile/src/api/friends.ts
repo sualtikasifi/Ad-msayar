@@ -34,7 +34,7 @@ export async function removeFriend(friendshipId: string): Promise<void> {
   await apiClient.delete(`/friends/${friendshipId}`);
 }
 
-export async function searchUsers(query: string): Promise<{ id: string; username: string; avatar_url: string | null }[]> {
+export async function searchUsers(query: string): Promise<{ id: string; username: string; avatar_id: number }[]> {
   const { data } = await apiClient.get('/users/search', { params: { q: query } });
   return data;
 }

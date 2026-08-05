@@ -3,7 +3,7 @@ import { pool } from '../config/database';
 export interface LeaderboardEntry {
   userId: string;
   username: string;
-  avatarUrl: string | null;
+  avatarId: number;
   stepCount: number;
   rank: number;
   isCurrentUser: boolean;
@@ -22,7 +22,7 @@ export async function getDailyLeaderboard(userId: string): Promise<LeaderboardEn
      SELECT
        u.id AS "userId",
        u.username,
-       u.avatar_url AS "avatarUrl",
+       u.avatar_id AS "avatarId",
        COALESCE(ds.step_count, 0) AS "stepCount",
        RANK() OVER (ORDER BY COALESCE(ds.step_count, 0) DESC)::int AS rank,
        u.id = $1 AS "isCurrentUser"
@@ -47,7 +47,7 @@ export async function getWeeklyLeaderboard(userId: string): Promise<LeaderboardE
      SELECT
        u.id AS "userId",
        u.username,
-       u.avatar_url AS "avatarUrl",
+       u.avatar_id AS "avatarId",
        COALESCE(SUM(ds.step_count), 0)::int AS "stepCount",
        RANK() OVER (ORDER BY COALESCE(SUM(ds.step_count), 0) DESC)::int AS rank,
        u.id = $1 AS "isCurrentUser"
@@ -56,7 +56,7 @@ export async function getWeeklyLeaderboard(userId: string): Promise<LeaderboardE
      LEFT JOIN daily_steps ds ON ds.user_id = u.id
        AND ds.step_date >= date_trunc('week', CURRENT_DATE)
        AND ds.step_date <= CURRENT_DATE
-     GROUP BY u.id, u.username, u.avatar_url
+     GROUP BY u.id, u.username, u.avatar_id
      ORDER BY rank ASC, u.username ASC`,
     [userId]
   );

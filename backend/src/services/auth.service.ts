@@ -7,7 +7,7 @@ import type { User, PublicUser } from '../types';
 const SALT_ROUNDS = 12;
 
 function toPublicUser(user: User): PublicUser {
-  return { id: user.id, username: user.username, avatar_url: user.avatar_url, is_guest: user.is_guest };
+  return { id: user.id, username: user.username, avatar_id: user.avatar_id, is_guest: user.is_guest };
 }
 
 export async function registerUser(
