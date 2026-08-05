@@ -23,6 +23,7 @@ import * as challengesApi from '@/api/challenges';
 import type { PublicUser } from '@/types';
 import type { PersonalRecords } from '@/api/stats';
 import type { AchievementsResponse } from '@/api/achievements';
+import { today as todayLocalDate, weekStart as weekStartLocalDate } from '@/utils/dateHelpers';
 
 function StatBox({ value, label, color = '#6C63FF' }: { value: string; label: string; color?: string }) {
   return (
@@ -98,12 +99,8 @@ export default function ProfileScreen() {
 
           // Weekly steps (only for friends)
           try {
-            const weekStart = new Date();
-            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
-            const today = new Date().toISOString().split('T')[0];
-            const from = weekStart.toISOString().split('T')[0];
             const { data: steps } = await apiClient.get(`/steps/user/${id}`, {
-              params: { from, to: today },
+              params: { from: weekStartLocalDate(), to: todayLocalDate() },
             });
             const total = (steps as { step_count: number }[]).reduce((s, r) => s + r.step_count, 0);
             setWeeklySteps(total);

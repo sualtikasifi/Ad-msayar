@@ -51,6 +51,20 @@ export async function createChallenge(req: Request, res: Response): Promise<void
     return;
   }
 
+  // Only accepted friends can be invited — otherwise any authenticated user
+  // could spam arbitrary user IDs with challenge invites and push notifications.
+  const { rows: friendRows } = await pool.query(
+    `SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END AS friend_id
+     FROM friendships
+     WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'`,
+    [req.userId]
+  );
+  const friendIds = new Set(friendRows.map((r) => r.friend_id));
+  if (!participant_ids.every((id) => friendIds.has(id))) {
+    res.status(403).json({ error: 'You can only invite accepted friends to a challenge' });
+    return;
+  }
+
   try {
     const challenge = await challengeService.createChallenge(
       req.userId!,

@@ -13,12 +13,15 @@ interface FriendState {
   acceptRequest: (friendshipId: string) => Promise<void>;
   declineRequest: (friendshipId: string) => Promise<void>;
   removeFriend: (friendshipId: string) => Promise<void>;
+  reset: () => void;
 }
 
 export const useFriendStore = create<FriendState>((set) => ({
   friends: [],
   pendingRequests: [],
   isLoading: false,
+
+  reset: () => set({ friends: [], pendingRequests: [], isLoading: false }),
 
   loadFriends: async () => {
     set({ isLoading: true });
