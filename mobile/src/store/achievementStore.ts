@@ -11,12 +11,15 @@ interface AchievementState {
   loadAchievements: () => Promise<void>;
   addPendingToast: (achievement: Achievement) => void;
   dismissToast: () => void;
+  reset: () => void;
 }
 
 export const useAchievementStore = create<AchievementState>((set) => ({
   data: null,
   isLoading: false,
   pendingToasts: [],
+
+  reset: () => set({ data: null, isLoading: false, pendingToasts: [] }),
 
   loadAchievements: async () => {
     set({ isLoading: true });

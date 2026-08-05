@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as SecureStore from 'expo-secure-store';
 import { Pedometer } from 'expo-sensors';
+import { today as todayLocalDate } from '../utils/dateHelpers';
 
 export const BACKGROUND_STEP_TASK = 'BACKGROUND_STEP_SYNC';
 
@@ -15,7 +16,7 @@ export const BACKGROUND_STEP_TASK = 'BACKGROUND_STEP_SYNC';
 // logic that produces `lastKnownSteps`.
 TaskManager.defineTask(BACKGROUND_STEP_TASK, async () => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocalDate();
     let stepCount: number;
 
     if (Platform.OS === 'ios') {

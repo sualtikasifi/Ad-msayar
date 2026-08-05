@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import * as authApi from '../api/auth';
 import type { PublicUser } from '../types';
+import { useFriendStore } from './friendStore';
+import { useChallengeStore } from './challengeStore';
+import { useAchievementStore } from './achievementStore';
+import { useStepsStore } from './stepsStore';
 
 interface AuthState {
   user: (PublicUser & { email?: string }) | null;
@@ -82,6 +86,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       SecureStore.deleteItemAsync('user'),
     ]);
     set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false });
+    // Otherwise a fast logout → different-account login on the same device
+    // can briefly render the previous user's cached friends/challenges/steps.
+    useFriendStore.getState().reset();
+    useChallengeStore.getState().reset();
+    useAchievementStore.getState().reset();
+    useStepsStore.getState().reset();
   },
 
   updateUser: async (partial) => {

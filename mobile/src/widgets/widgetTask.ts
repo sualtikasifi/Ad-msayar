@@ -8,6 +8,7 @@ import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import React from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { StepWidget } from './StepWidget';
+import { today as todayLocalDate } from '../utils/dateHelpers';
 
 async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
   const { widgetAction, renderWidget } = props;
@@ -24,8 +25,7 @@ async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
     if (stepsRaw) {
       try {
         const parsed = JSON.parse(stepsRaw) as { date: string; count: number };
-        const today = new Date().toISOString().split('T')[0];
-        if (parsed.date === today) steps = parsed.count;
+        if (parsed.date === todayLocalDate()) steps = parsed.count;
       } catch {}
     }
 

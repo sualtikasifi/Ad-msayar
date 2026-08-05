@@ -13,12 +13,15 @@ interface ChallengeState {
   declineChallenge: (id: string) => Promise<void>;
   cancelChallenge: (id: string) => Promise<void>;
   updateDetailRankings: (detail: Partial<ChallengeDetail>) => void;
+  reset: () => void;
 }
 
 export const useChallengeStore = create<ChallengeState>((set) => ({
   challenges: [],
   activeChallengeDetail: null,
   isLoading: false,
+
+  reset: () => set({ challenges: [], activeChallengeDetail: null, isLoading: false }),
 
   loadChallenges: async () => {
     set({ isLoading: true });

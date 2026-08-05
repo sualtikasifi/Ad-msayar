@@ -249,7 +249,8 @@ export default function StatsScreen() {
     : (chartData as WeeklyPoint[]).map((_, i) => `H${i + 1}`);
 
   const totalInPeriod = values.reduce((s, v) => s + v, 0);
-  const avgInPeriod = values.length > 0 ? Math.round(totalInPeriod / values.filter(v => v > 0).length || 1) : 0;
+  const activeDays = values.filter(v => v > 0).length;
+  const avgInPeriod = activeDays > 0 ? Math.round(totalInPeriod / activeDays) : 0;
 
   function prevMonth() {
     if (heatMonth === 1) { setHeatYear(y => y - 1); setHeatMonth(12); }
