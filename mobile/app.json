@@ -19,7 +19,10 @@
         "NSMotionUsageDescription": "Adım sayımı için hareket sensörüne erişim gereklidir.",
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı seçmek için fotoğraf kütüphanesine erişim gereklidir.",
         "NSCameraUsageDescription": "Profil fotoğrafı çekmek için kamera erişimi gereklidir.",
-        "UIBackgroundModes": ["fetch", "processing"]
+        "UIBackgroundModes": [
+          "fetch",
+          "processing"
+        ]
       }
     },
     "android": {
@@ -28,9 +31,11 @@
         "backgroundColor": "#6C63FF"
       },
       "package": "com.admsayar.app",
+      "versionCode": 1,
       "permissions": [
         "ACTIVITY_RECOGNITION",
         "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
         "RECEIVE_BOOT_COMPLETED",
         "NOTIFICATIONS",
         "VIBRATE"
@@ -69,7 +74,8 @@
             }
           ]
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

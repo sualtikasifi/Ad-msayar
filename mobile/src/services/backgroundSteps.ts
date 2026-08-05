@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as SecureStore from 'expo-secure-store';
@@ -5,20 +6,35 @@ import { Pedometer } from 'expo-sensors';
 
 export const BACKGROUND_STEP_TASK = 'BACKGROUND_STEP_SYNC';
 
-// This task fires on background fetch (every ~15 minutes minimum on iOS)
+// This task fires on background fetch (every ~15 minutes minimum on iOS).
+//
+// `Pedometer.getStepCountAsync` (historical since-midnight query) is iOS-only —
+// on Android it always throws, so this task can only ever push the most recent
+// value already recorded locally (from the foreground `watchStepCount` stream)
+// rather than query the sensor itself. See usePedometer.ts for the anchoring
+// logic that produces `lastKnownSteps`.
 TaskManager.defineTask(BACKGROUND_STEP_TASK, async () => {
   try {
-    // Read pedometer from midnight
-    const midnight = new Date();
-    midnight.setHours(0, 0, 0, 0);
-
-    const isPedometerAvailable = await Pedometer.isAvailableAsync();
-    if (!isPedometerAvailable) return BackgroundFetch.BackgroundFetchResult.NoData;
-
-    const result = await Pedometer.getStepCountAsync(midnight, new Date());
-    const stepCount = result.steps;
-
     const today = new Date().toISOString().split('T')[0];
+    let stepCount: number;
+
+    if (Platform.OS === 'ios') {
+      const isPedometerAvailable = await Pedometer.isAvailableAsync();
+      if (!isPedometerAvailable) return BackgroundFetch.BackgroundFetchResult.NoData;
+
+      const midnight = new Date();
+      midnight.setHours(0, 0, 0, 0);
+      const result = await Pedometer.getStepCountAsync(midnight, new Date());
+      stepCount = result.steps;
+    } else {
+      // Android: no historical query API. Re-push the last value the
+      // foreground stream recorded instead of re-querying the sensor.
+      const stored = await SecureStore.getItemAsync('lastKnownSteps');
+      if (!stored) return BackgroundFetch.BackgroundFetchResult.NoData;
+      const parsed = JSON.parse(stored) as { date: string; count: number };
+      if (parsed.date !== today) return BackgroundFetch.BackgroundFetchResult.NoData;
+      stepCount = parsed.count;
+    }
 
     // Store latest step count locally for widget and offline use
     await SecureStore.setItemAsync('lastKnownSteps', JSON.stringify({ date: today, count: stepCount }));
