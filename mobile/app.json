@@ -36,7 +36,9 @@
         "FOREGROUND_SERVICE_DATA_SYNC",
         "RECEIVE_BOOT_COMPLETED",
         "NOTIFICATIONS",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
       ]
     },
     "plugins": [
@@ -76,6 +78,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4ed1ced1-ebe0-4111-8b1c-4c4762fe9b2d"
+      }
+    },
+    "owner": "avcution"
   }
 }
