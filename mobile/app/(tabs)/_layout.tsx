@@ -49,13 +49,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="achievements"
-        options={{
-          title: 'Rozetler',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏅" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
         name="stats"
         options={{
           title: 'İstatistik',
