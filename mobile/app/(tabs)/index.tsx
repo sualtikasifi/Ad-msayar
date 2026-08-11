@@ -30,7 +30,7 @@ const FILTERS: { label: string; value: FilterType }[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { todaySteps, debugInfo } = usePedometer();
+  const { todaySteps } = usePedometer();
   const { loadTodayFromServer } = useStepsStore();
   const { challenges, loadChallenges } = useChallengeStore();
   const { colors } = useTheme();
@@ -83,16 +83,6 @@ export default function HomeScreen() {
         {/* Step Ring */}
         <View style={styles.ringContainer}>
           <StepRing steps={todaySteps} goal={user?.daily_step_goal ?? 10000} size={220} />
-        </View>
-
-        {/* Temporary pedometer diagnostics — remove once step tracking is confirmed working */}
-        <View style={styles.debugBox}>
-          <Text style={styles.debugText}>
-            🔧 sensör: {String(debugInfo.available)} · izin: {debugInfo.permission} · olay: {debugInfo.watchEventCount} · ham: {debugInfo.lastRawSteps ?? '—'}
-          </Text>
-          {debugInfo.lastError && (
-            <Text style={styles.debugError}>hata: {debugInfo.lastError}</Text>
-          )}
         </View>
 
         {/* Pending invites */}
@@ -190,25 +180,6 @@ const styles = StyleSheet.create({
   ringContainer: {
     alignItems: 'center',
     paddingVertical: 24,
-  },
-  debugBox: {
-    backgroundColor: '#1A1A2E',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  debugText: {
-    color: '#A5F3FC',
-    fontSize: 11,
-    fontFamily: 'monospace',
-  },
-  debugError: {
-    color: '#FCA5A5',
-    fontSize: 11,
-    fontFamily: 'monospace',
-    marginTop: 2,
   },
   section: {
     marginBottom: 20,
