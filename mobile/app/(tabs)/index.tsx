@@ -42,8 +42,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadChallenges().catch(console.error);
-    loadTodayFromServer().catch(console.error);
-  }, [loadChallenges, loadTodayFromServer]);
+  }, [loadChallenges]);
 
   async function onRefresh() {
     setRefreshing(true);
