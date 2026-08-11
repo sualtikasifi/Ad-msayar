@@ -56,24 +56,6 @@
           }
         }
       ],
-      [
-        "react-native-android-widget",
-        {
-          "widgets": [
-            {
-              "name": "StepWidget",
-              "label": "Adım Sayacı",
-              "description": "Günlük adım sayınızı ana ekranda görün",
-              "previewImage": "./assets/images/widget-preview.png",
-              "minWidth": "180dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 3,
-              "targetCellHeight": 2,
-              "updatePeriodMillis": 1800000
-            }
-          ]
-        }
-      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

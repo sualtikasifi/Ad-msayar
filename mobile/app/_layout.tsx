@@ -8,7 +8,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useAchievementStore } from '@/store/achievementStore';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socketService';
 import { registerBackgroundTask } from '@/services/backgroundSteps';
-import '@/widgets/widgetTask'; // register Android widget task handler
 import {
   registerForPushNotifications,
   setupNotificationListeners,
