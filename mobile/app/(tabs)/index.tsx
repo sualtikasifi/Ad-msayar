@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { usePedometer } from '@/hooks/usePedometer';
 import { StepRing } from '@/components/StepRing';
 import { ChallengeCard } from '@/components/ChallengeCard';
+import { InlineChallengeCreator } from '@/components/InlineChallengeCreator';
 import { AppHeader } from '@/components/AppHeader';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { useAuthStore } from '@/store/authStore';
@@ -39,6 +40,7 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const [filter, setFilter] = React.useState<FilterType>('all');
+  const [showCreator, setShowCreator] = React.useState(false);
 
   const goal = user?.daily_step_goal ?? 10000;
   const percent = Math.min(Math.round((todaySteps / goal) * 100), 100);
@@ -125,11 +127,21 @@ export default function HomeScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>🏆 Challenge'lar</Text>
               <TouchableOpacity
                 style={[styles.newButton, { backgroundColor: colors.cardAlt, borderColor: colors.primary }]}
-                onPress={() => router.push('/challenge/new')}
+                onPress={() => setShowCreator((v) => !v)}
               >
-                <Text style={[styles.newButtonText, { color: colors.primary }]}>+ Yeni</Text>
+                <Text style={[styles.newButtonText, { color: colors.primary }]}>{showCreator ? '✕ Kapat' : '+ Yeni'}</Text>
               </TouchableOpacity>
             </View>
+
+            {showCreator && (
+              <InlineChallengeCreator
+                onCreated={() => {
+                  setShowCreator(false);
+                  loadChallenges().catch(console.error);
+                }}
+                onCancel={() => setShowCreator(false)}
+              />
+            )}
 
             <View style={styles.filterRow}>
               {FILTERS.map((f) => {
@@ -160,7 +172,7 @@ export default function HomeScreen() {
                 </Text>
                 <TouchableOpacity
                   style={[styles.createButton, { backgroundColor: colors.primary }]}
-                  onPress={() => router.push('/challenge/new')}
+                  onPress={() => setShowCreator(true)}
                 >
                   <Text style={styles.createButtonText}>Challenge Oluştur</Text>
                 </TouchableOpacity>

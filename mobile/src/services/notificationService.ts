@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { apiClient } from '../api/client';
 
@@ -41,7 +42,18 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
   }
 
-  const token = (await Notifications.getExpoPushTokenAsync()).data;
+  // Standalone/EAS builds (unlike Expo Go) require the project ID to be
+  // passed explicitly, otherwise this throws and push registration never
+  // completes — no token ever reaches the backend and no notification is
+  // ever delivered.
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  let token: string;
+  try {
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch (err) {
+    console.error('Failed to get push token:', err);
+    return null;
+  }
 
   // Save token to backend
   try {

@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
 import { useAchievementStore } from '@/store/achievementStore';
+import { useStepsStore } from '@/store/stepsStore';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socketService';
 import { registerBackgroundTask } from '@/services/backgroundSteps';
 import {
@@ -14,6 +15,7 @@ import {
   setupNotificationListeners,
   getInitialNotification,
 } from '@/services/notificationService';
+import { useLiveStepNotification } from '@/hooks/useLiveStepNotification';
 import { AchievementToastManager } from '@/components/AchievementToast';
 import type { Achievement } from '@/api/achievements';
 
@@ -28,7 +30,12 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
+  useLiveStepNotification();
+
   useEffect(() => {
+    // Fire in parallel — cached steps can paint the ring instantly while
+    // auth/session restoration (a separate round trip) is still in flight.
+    useStepsStore.getState().hydrateFromCache();
     loadFromStorage();
   }, [loadFromStorage]);
 
