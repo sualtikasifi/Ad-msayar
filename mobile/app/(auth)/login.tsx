@@ -13,8 +13,11 @@ import {
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { useTheme } from '@/context/ThemeContext';
+import { ScreenBackground } from '@/components/ScreenBackground';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,70 +42,73 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.inner}
-      >
-        {/* Logo / Başlık */}
-        <View style={styles.header}>
-          <Text style={styles.logo}>👟</Text>
-          <Text style={styles.title}>Ad Msayar</Text>
-          <Text style={styles.subtitle}>Adım at, yarış kazan!</Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="ornek@email.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.label}>Şifre</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Giriş Yap</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.registerRow}>
-            <Text style={styles.registerPrompt}>Hesabın yok mu? </Text>
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
-                <Text style={styles.registerLink}>Kayıt Ol</Text>
-              </TouchableOpacity>
-            </Link>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.inner}
+        >
+          {/* Logo / Başlık */}
+          <View style={styles.header}>
+            <Text style={styles.logo}>👟</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>Adımsayar</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>Adım at, yarış kazan!</Text>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+          {/* Form */}
+          <View style={[styles.form, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.cardAlt, borderColor: colors.border, color: colors.text }]}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="ornek@email.com"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Şifre</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.cardAlt, borderColor: colors.border, color: colors.text }]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+            />
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: colors.primary }, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Giriş Yap</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.registerRow}>
+              <Text style={[styles.registerPrompt, { color: colors.textMuted }]}>Hesabın yok mu? </Text>
+              <Link href="/(auth)/register" asChild>
+                <TouchableOpacity>
+                  <Text style={[styles.registerLink, { color: colors.primary }]}>Kayıt Ol</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7FF',
   },
   inner: {
     flex: 1,
@@ -120,41 +126,29 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#6C63FF',
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 15,
-    color: '#6B7280',
   },
   form: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
+    borderWidth: 1,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 5,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 6,
     marginTop: 12,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: '#1A1A2E',
-    backgroundColor: '#F9FAFB',
   },
   button: {
-    backgroundColor: '#6C63FF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -175,11 +169,9 @@ const styles = StyleSheet.create({
   },
   registerPrompt: {
     fontSize: 14,
-    color: '#6B7280',
   },
   registerLink: {
     fontSize: 14,
-    color: '#6C63FF',
     fontWeight: '600',
   },
 });

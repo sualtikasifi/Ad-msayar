@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
 import * as usersApi from '@/api/users';
+import { ScreenBackground } from '@/components/ScreenBackground';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -58,65 +59,67 @@ export default function DeleteAccountScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={[styles.navBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.back, { color: colors.primary }]}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={[styles.navTitle, { color: colors.text }]}>Hesabı Sil</Text>
-        <View style={{ width: 60 }} />
-      </View>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={[styles.back, { color: colors.primary }]}>← Geri</Text>
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: colors.text }]}>Hesabı Sil</Text>
+          <View style={{ width: 60 }} />
+        </View>
 
-      <View style={styles.content}>
-        <Text style={styles.emoji}>⚠️</Text>
-        <Text style={[styles.title, { color: colors.text }]}>Bu işlem kalıcıdır</Text>
-        <Text style={[styles.desc, { color: colors.textMuted }]}>
-          Hesabını sildiğinde profilin, adım geçmişin, arkadaşlıkların ve challenge kayıtların
-          kalıcı olarak silinir. Bu işlem geri alınamaz.
-        </Text>
+        <View style={styles.content}>
+          <Text style={styles.emoji}>⚠️</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Bu işlem kalıcıdır</Text>
+          <Text style={[styles.desc, { color: colors.textMuted }]}>
+            Hesabını sildiğinde profilin, adım geçmişin, arkadaşlıkların ve challenge kayıtların
+            kalıcı olarak silinir. Bu işlem geri alınamaz.
+          </Text>
 
-        {!isGuest && (
-          <>
-            <Text style={[styles.label, { color: colors.textMuted }]}>Şifreni gir</Text>
-            <TextInput
-              style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }]}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="••••••"
-              placeholderTextColor={colors.textMuted}
-            />
-          </>
-        )}
-
-        <Text style={[styles.label, { color: colors.textMuted }]}>
-          Onaylamak için &quot;SİL&quot; yaz
-        </Text>
-        <TextInput
-          style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }]}
-          value={confirmText}
-          onChangeText={setConfirmText}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          placeholder="SİL"
-          placeholderTextColor={colors.textMuted}
-        />
-
-        {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={[styles.deleteBtn, (!confirmReady || loading) && styles.disabled]}
-          onPress={handleDelete}
-          disabled={!confirmReady || loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.deleteBtnText}>Hesabımı Kalıcı Olarak Sil</Text>
+          {!isGuest && (
+            <>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Şifreni gir</Text>
+              <TextInput
+                style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }]}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="••••••"
+                placeholderTextColor={colors.textMuted}
+              />
+            </>
           )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+
+          <Text style={[styles.label, { color: colors.textMuted }]}>
+            Onaylamak için &quot;SİL&quot; yaz
+          </Text>
+          <TextInput
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }]}
+            value={confirmText}
+            onChangeText={setConfirmText}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            placeholder="SİL"
+            placeholderTextColor={colors.textMuted}
+          />
+
+          {error ? <Text style={[styles.errorMsg, { color: colors.danger }]}>{error}</Text> : null}
+
+          <TouchableOpacity
+            style={[styles.deleteBtn, { backgroundColor: colors.danger }, (!confirmReady || loading) && styles.disabled]}
+            onPress={handleDelete}
+            disabled={!confirmReady || loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.deleteBtnText}>Hesabımı Kalıcı Olarak Sil</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
@@ -127,8 +130,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   back: { fontSize: 15, fontWeight: '600' },
   navTitle: { fontSize: 17, fontWeight: '700' },
@@ -143,9 +146,8 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 15,
   },
-  errorMsg: { color: '#EF4444', fontSize: 13, fontWeight: '600', marginTop: 10 },
+  errorMsg: { fontSize: 13, fontWeight: '600', marginTop: 10 },
   deleteBtn: {
-    backgroundColor: '#EF4444',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
