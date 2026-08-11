@@ -14,8 +14,8 @@ export async function saveToken(userId: string, token: string): Promise<void> {
   );
 }
 
-export async function removeToken(token: string): Promise<void> {
-  await pool.query('DELETE FROM push_tokens WHERE token = $1', [token]);
+export async function removeToken(userId: string, token: string): Promise<void> {
+  await pool.query('DELETE FROM push_tokens WHERE token = $1 AND user_id = $2', [token, userId]);
 }
 
 async function getTokensForUser(userId: string): Promise<string[]> {

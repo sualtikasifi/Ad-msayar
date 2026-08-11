@@ -25,7 +25,7 @@ router.post('/token', async (req: Request, res: Response): Promise<void> => {
 router.delete('/token', async (req: Request, res: Response): Promise<void> => {
   const { token } = req.body;
   if (!token) { res.status(400).json({ error: 'token required' }); return; }
-  await pushService.removeToken(token).catch(() => {});
+  await pushService.removeToken(req.userId!, token).catch(() => {});
   res.json({ message: 'Token removed' });
 });
 

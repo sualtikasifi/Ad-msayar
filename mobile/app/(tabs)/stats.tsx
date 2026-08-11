@@ -379,13 +379,23 @@ export default function StatsScreen() {
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>📅 Aktivite Haritası</Text>
         <View style={styles.chartCard}>
           <View style={styles.heatmapNav}>
-            <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
+            <TouchableOpacity
+              onPress={prevMonth}
+              style={styles.navBtn}
+              accessibilityLabel="Önceki ay"
+              accessibilityRole="button"
+            >
               <Text style={styles.navBtnText}>‹</Text>
             </TouchableOpacity>
             <Text style={styles.heatmapMonth}>
               {MONTHS_TR[heatMonth - 1]} {heatYear}
             </Text>
-            <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
+            <TouchableOpacity
+              onPress={nextMonth}
+              style={styles.navBtn}
+              accessibilityLabel="Sonraki ay"
+              accessibilityRole="button"
+            >
               <Text style={styles.navBtnText}>›</Text>
             </TouchableOpacity>
           </View>

@@ -167,12 +167,16 @@ export default function FriendsScreen() {
                   <TouchableOpacity
                     style={styles.acceptBtn}
                     onPress={() => handleAccept(item.id)}
+                    accessibilityLabel="Arkadaşlık isteğini kabul et"
+                    accessibilityRole="button"
                   >
                     <Text style={styles.acceptText}>✓</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.declineBtn}
                     onPress={() => handleDecline(item.id)}
+                    accessibilityLabel="Arkadaşlık isteğini reddet"
+                    accessibilityRole="button"
                   >
                     <Text style={styles.declineText}>✕</Text>
                   </TouchableOpacity>
