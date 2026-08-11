@@ -12,6 +12,9 @@ function TabIcon({ emoji, focused, label }: { emoji: string; focused: boolean; l
           styles.label,
           { color: focused ? colors.primary : colors.textMuted, opacity: focused || !isDark ? 1 : 0.8 },
         ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
       >
         {label}
       </Text>
@@ -73,14 +76,15 @@ const styles = StyleSheet.create({
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 16,
     gap: 2,
-    minWidth: 64,
+    width: '100%',
   },
   label: {
     fontSize: 10,
     fontWeight: '700',
+    textAlign: 'center',
   },
 });
