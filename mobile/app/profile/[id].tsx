@@ -152,10 +152,18 @@ export default function ProfileScreen() {
         <Text style={styles.navTitle}>Profil</Text>
         {isMe ? (
           <View style={styles.navRight}>
-            <TouchableOpacity onPress={() => router.push('/profile/settings')}>
+            <TouchableOpacity
+              onPress={() => router.push('/profile/settings')}
+              accessibilityLabel="Ayarlar"
+              accessibilityRole="button"
+            >
               <Text style={styles.settingsBtn}>⚙️</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/profile/edit')}>
+            <TouchableOpacity
+              onPress={() => router.push('/profile/edit')}
+              accessibilityLabel="Profili düzenle"
+              accessibilityRole="button"
+            >
               <Text style={styles.editBtn}>✏️</Text>
             </TouchableOpacity>
           </View>

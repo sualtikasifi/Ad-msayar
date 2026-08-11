@@ -32,6 +32,10 @@ export const useStepsStore = create<StepsState>((set) => ({
 
   loadTodayFromServer: async () => {
     const { step_count } = await stepsApi.getTodaySteps();
-    set({ todaySteps: step_count });
+    // Never let a server pull decrease the count: if a live pedometer sync
+    // hasn't reached the server yet (in flight, or a previous sync silently
+    // failed), pulling from the server would otherwise overwrite a correct,
+    // higher local value with a stale one.
+    set((state) => ({ todaySteps: Math.max(step_count, state.todaySteps) }));
   },
 }));
