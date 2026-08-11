@@ -65,7 +65,7 @@ export default function RootLayout() {
       } else if (data.screen === 'friends') {
         router.push('/(tabs)/friends');
       } else if (data.screen === 'achievements') {
-        router.push('/(tabs)/achievements');
+        router.push('/(tabs)/leaderboard');
       }
     });
 
@@ -77,7 +77,7 @@ export default function RootLayout() {
       } else if (data.screen === 'friends') {
         router.push('/(tabs)/friends');
       } else if (data.screen === 'achievements') {
-        router.push('/(tabs)/achievements');
+        router.push('/(tabs)/leaderboard');
       }
     }).catch(console.error);
 
