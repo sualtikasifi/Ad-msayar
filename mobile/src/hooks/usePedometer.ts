@@ -5,10 +5,19 @@ import { useStepsStore } from '../store/stepsStore';
 const SYNC_INTERVAL_MS = 60 * 1000; // forced sync every 60s
 const DEBOUNCE_MS = 500;
 
+interface PedometerDebugInfo {
+  available: boolean | 'checking';
+  permission: 'checking' | 'granted' | 'denied' | 'error';
+  watchEventCount: number;
+  lastRawSteps: number | null;
+  lastError: string | null;
+}
+
 interface PedometerState {
   todaySteps: number;
   isAvailable: boolean;
   permissionGranted: boolean;
+  debugInfo: PedometerDebugInfo;
 }
 
 /**
@@ -28,6 +37,13 @@ export function usePedometer(): PedometerState {
   const { todaySteps, setTodaySteps, syncToServer } = useStepsStore();
   const [isAvailable, setIsAvailable] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<PedometerDebugInfo>({
+    available: 'checking',
+    permission: 'checking',
+    watchEventCount: 0,
+    lastRawSteps: null,
+    lastError: null,
+  });
 
   const pendingSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -50,9 +66,15 @@ export function usePedometer(): PedometerState {
     let cancelled = false;
 
     (async () => {
-      const available = await Pedometer.isAvailableAsync().catch(() => false);
+      let available = false;
+      try {
+        available = await Pedometer.isAvailableAsync();
+      } catch (err) {
+        setDebugInfo((d) => ({ ...d, lastError: `isAvailableAsync: ${String(err)}` }));
+      }
       if (cancelled) return;
       setIsAvailable(available);
+      setDebugInfo((d) => ({ ...d, available }));
       if (!available) return;
 
       // 1) Request the runtime permission (ACTIVITY_RECOGNITION on Android,
@@ -64,11 +86,13 @@ export function usePedometer(): PedometerState {
         }
         if (cancelled) return;
         setPermissionGranted(perm.granted);
+        setDebugInfo((d) => ({ ...d, permission: perm.granted ? 'granted' : 'denied' }));
         if (!perm.granted) return;
-      } catch {
+      } catch (err) {
         // Some platforms/SDKs don't implement the permission API — continue and
         // let watchStepCount fail gracefully if truly unavailable.
         setPermissionGranted(true);
+        setDebugInfo((d) => ({ ...d, permission: 'error', lastError: `permissions: ${String(err)}` }));
       }
 
       // 2) iOS only: seed today's total from the historical query. On Android
@@ -87,6 +111,7 @@ export function usePedometer(): PedometerState {
       // 3) Live updates. The stream reports steps since it began, so we anchor it
       //    to the count already known for today and only ever grow the total.
       subscription = Pedometer.watchStepCount((result) => {
+        setDebugInfo((d) => ({ ...d, watchEventCount: d.watchEventCount + 1, lastRawSteps: result.steps }));
         if (watchOriginRef.current === null) {
           watchOriginRef.current = result.steps;
           sessionBaseRef.current = useStepsStore.getState().todaySteps;
@@ -124,5 +149,5 @@ export function usePedometer(): PedometerState {
     };
   }, [setTodaySteps, scheduledSync, syncToServer]);
 
-  return { todaySteps, isAvailable, permissionGranted };
+  return { todaySteps, isAvailable, permissionGranted, debugInfo };
 }
