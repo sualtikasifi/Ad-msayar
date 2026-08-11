@@ -36,9 +36,7 @@
         "FOREGROUND_SERVICE_DATA_SYNC",
         "RECEIVE_BOOT_COMPLETED",
         "NOTIFICATIONS",
-        "VIBRATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK"
+        "VIBRATE"
       ]
     },
     "plugins": [
