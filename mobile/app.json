@@ -36,9 +36,7 @@
         "FOREGROUND_SERVICE_DATA_SYNC",
         "RECEIVE_BOOT_COMPLETED",
         "NOTIFICATIONS",
-        "VIBRATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK"
+        "VIBRATE"
       ]
     },
     "plugins": [
@@ -54,24 +52,6 @@
               "notificationBody": "Adımlarınız sayılıyor..."
             }
           }
-        }
-      ],
-      [
-        "react-native-android-widget",
-        {
-          "widgets": [
-            {
-              "name": "StepWidget",
-              "label": "Adım Sayacı",
-              "description": "Günlük adım sayınızı ana ekranda görün",
-              "previewImage": "./assets/images/widget-preview.png",
-              "minWidth": "180dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 3,
-              "targetCellHeight": 2,
-              "updatePeriodMillis": 1800000
-            }
-          ]
         }
       ],
       "@react-native-community/datetimepicker"
