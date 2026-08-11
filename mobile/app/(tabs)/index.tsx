@@ -16,6 +16,16 @@ import { useAuthStore } from '@/store/authStore';
 import { useChallengeStore } from '@/store/challengeStore';
 import { useStepsStore } from '@/store/stepsStore';
 import { useTheme } from '@/context/ThemeContext';
+import type { ChallengeStatus } from '@/types';
+
+type FilterType = 'all' | ChallengeStatus;
+
+const FILTERS: { label: string; value: FilterType }[] = [
+  { label: 'Tümü', value: 'all' },
+  { label: 'Aktif', value: 'active' },
+  { label: 'Bekliyor', value: 'pending' },
+  { label: 'Bitti', value: 'completed' },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -25,9 +35,10 @@ export default function HomeScreen() {
   const { challenges, loadChallenges } = useChallengeStore();
   const { colors } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [filter, setFilter] = React.useState<FilterType>('all');
 
-  const activeChallenges = challenges.filter((c) => c.status === 'active');
   const pendingChallenges = challenges.filter((c) => c.status === 'pending' && c.my_status === 'invited');
+  const filteredChallenges = filter === 'all' ? challenges : challenges.filter((c) => c.status === filter);
 
   useEffect(() => {
     loadChallenges().catch(console.error);
@@ -89,18 +100,39 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Active challenges */}
+        {/* Challenges */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>🏆 Aktif Challenge'lar</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/challenges')}>
-              <Text style={styles.seeAll}>Tümü</Text>
+            <Text style={styles.sectionTitle}>🏆 Challenge'lar</Text>
+            <TouchableOpacity
+              style={styles.newButton}
+              onPress={() => router.push('/challenge/new')}
+            >
+              <Text style={styles.newButtonText}>+ Yeni</Text>
             </TouchableOpacity>
           </View>
 
-          {activeChallenges.length === 0 ? (
+          <View style={styles.filterRow}>
+            {FILTERS.map((f) => (
+              <TouchableOpacity
+                key={f.value}
+                style={[styles.filterChip, filter === f.value && styles.activeChip]}
+                onPress={() => setFilter(f.value)}
+              >
+                <Text style={[styles.filterText, filter === f.value && styles.activeFilterText]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {filteredChallenges.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>Aktif challenge yok.</Text>
+              <Text style={styles.emptyText}>
+                {filter === 'all'
+                  ? 'Henüz challenge yok.'
+                  : `${FILTERS.find((f) => f.value === filter)?.label} challenge yok.`}
+              </Text>
               <TouchableOpacity
                 style={styles.createButton}
                 onPress={() => router.push('/challenge/new')}
@@ -109,7 +141,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            activeChallenges.slice(0, 3).map((c) => (
+            filteredChallenges.map((c) => (
               <ChallengeCard
                 key={c.id}
                 challenge={c}
@@ -167,10 +199,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 8,
   },
-  seeAll: {
+  newButton: {
+    backgroundColor: '#6C63FF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  newButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 8,
+    marginBottom: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  activeChip: {
+    backgroundColor: '#6C63FF',
+    borderColor: '#6C63FF',
+  },
+  filterText: {
     fontSize: 13,
-    color: '#6C63FF',
     fontWeight: '600',
+    color: '#6B7280',
+  },
+  activeFilterText: {
+    color: '#FFFFFF',
   },
   empty: {
     alignItems: 'center',
