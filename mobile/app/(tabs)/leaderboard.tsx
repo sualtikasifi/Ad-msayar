@@ -13,7 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LeaderboardRow } from '@/components/LeaderboardRow';
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { AppHeader } from '@/components/AppHeader';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { useAchievementStore } from '@/store/achievementStore';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import * as leaderboardApi from '@/api/leaderboard';
 import type { LeaderboardEntry } from '@/types';
 import type { Achievement } from '@/api/achievements';
@@ -37,37 +40,40 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function LeaderboardAndAchievementsScreen() {
+  const { colors } = useTheme();
   const [view, setView] = useState<ViewMode>('leaderboard');
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Sıralama & Rozetler</Text>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <AppHeader />
 
-      <View style={styles.viewToggle}>
-        <TouchableOpacity
-          style={[styles.viewToggleBtn, view === 'leaderboard' && styles.activeViewToggle]}
-          onPress={() => setView('leaderboard')}
-        >
-          <Text style={[styles.viewToggleText, view === 'leaderboard' && styles.activeViewToggleText]}>
-            📊 Sıralama
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.viewToggleBtn, view === 'achievements' && styles.activeViewToggle]}
-          onPress={() => setView('achievements')}
-        >
-          <Text style={[styles.viewToggleText, view === 'achievements' && styles.activeViewToggleText]}>
-            🏅 Rozetler
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <View style={[styles.viewToggle, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.viewToggleBtn, view === 'leaderboard' && { backgroundColor: colors.primary }]}
+            onPress={() => setView('leaderboard')}
+          >
+            <Text style={[styles.viewToggleText, { color: view === 'leaderboard' ? '#FFFFFF' : colors.textMuted }]}>
+              📊 SIRALAMA
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewToggleBtn, view === 'achievements' && { backgroundColor: colors.primary }]}
+            onPress={() => setView('achievements')}
+          >
+            <Text style={[styles.viewToggleText, { color: view === 'achievements' ? '#FFFFFF' : colors.textMuted }]}>
+              🏅 ROZETLER
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      {view === 'leaderboard' ? <LeaderboardSection /> : <AchievementsSection />}
-    </SafeAreaView>
+        {view === 'leaderboard' ? <LeaderboardSection colors={colors} /> : <AchievementsSection colors={colors} />}
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
-function LeaderboardSection() {
+function LeaderboardSection({ colors }: { colors: ThemeColors }) {
   const [period, setPeriod] = useState<Period>('daily');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,43 +95,42 @@ function LeaderboardSection() {
     setRefreshing(false);
   }
 
-  const periodLabel = period === 'daily' ? 'Bugün' : 'Bu Hafta';
-
   return (
     <>
-      <View style={styles.toggle}>
-        <TouchableOpacity
-          style={[styles.toggleBtn, period === 'daily' && styles.activeToggle]}
-          onPress={() => setPeriod('daily')}
-        >
-          <Text style={[styles.toggleText, period === 'daily' && styles.activeToggleText]}>
-            Günlük
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleBtn, period === 'weekly' && styles.activeToggle]}
-          onPress={() => setPeriod('weekly')}
-        >
-          <Text style={[styles.toggleText, period === 'weekly' && styles.activeToggleText]}>
-            Haftalık
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.periodRow}>
+        {([
+          { key: 'daily' as Period, label: 'GÜNLÜK' },
+          { key: 'weekly' as Period, label: 'HAFTALIK' },
+        ]).map((p) => {
+          const active = period === p.key;
+          return (
+            <TouchableOpacity
+              key={p.key}
+              style={[
+                styles.periodBtn,
+                { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },
+              ]}
+              onPress={() => setPeriod(p.key)}
+            >
+              <Text style={[styles.periodText, { color: active ? '#FFFFFF' : colors.textMuted }]}>{p.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-
-      <Text style={styles.subtitle}>{periodLabel} en çok adım</Text>
 
       <FlatList
         data={entries}
         keyExtractor={(item) => item.userId}
         renderItem={({ item }) => <LeaderboardRow entry={item} />}
+        contentContainerStyle={{ paddingTop: 6, paddingBottom: 12 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📊</Text>
-            <Text style={styles.emptyText}>Henüz veri yok.</Text>
-            <Text style={styles.emptySubtext}>Arkadaş ekle ve adım atmaya başla!</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Henüz veri yok.</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>Arkadaş ekle ve adım atmaya başla!</Text>
           </View>
         }
       />
@@ -133,7 +138,7 @@ function LeaderboardSection() {
   );
 }
 
-function AchievementsSection() {
+function AchievementsSection({ colors }: { colors: ThemeColors }) {
   const { data, isLoading, loadAchievements } = useAchievementStore();
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -158,7 +163,7 @@ function AchievementsSection() {
   if (isLoading && !data) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6C63FF" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -167,78 +172,79 @@ function AchievementsSection() {
     <>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* Header stats */}
         {data && (
           <View style={styles.xpBadgeRow}>
-            <View style={styles.xpBadge}>
+            <View style={[styles.xpBadge, { backgroundColor: colors.primary }]}>
               <Text style={styles.xpText}>⚡ {data.total_xp} XP</Text>
             </View>
           </View>
         )}
 
         {data && (
-          <View style={styles.statsCard}>
+          <View style={[styles.statsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{data.earned_count}</Text>
-              <Text style={styles.statLabel}>Kazanılan</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{data.earned_count}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Kazanılan</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{data.total_count - data.earned_count}</Text>
-              <Text style={styles.statLabel}>Kalan</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{data.total_count - data.earned_count}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Kalan</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
                 {Math.round((data.earned_count / data.total_count) * 100)}%
               </Text>
-              <Text style={styles.statLabel}>Tamamlandı</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Tamamlandı</Text>
             </View>
           </View>
         )}
 
-        {/* Progress bar */}
         {data && (
           <View style={styles.progressContainer}>
-            <View style={styles.progressBg}>
+            <View style={[styles.progressBg, { backgroundColor: colors.cardAlt }]}>
               <View
                 style={[
                   styles.progressFill,
-                  { width: `${(data.earned_count / data.total_count) * 100}%` },
+                  { width: `${(data.earned_count / data.total_count) * 100}%`, backgroundColor: colors.primary },
                 ]}
               />
             </View>
           </View>
         )}
 
-        {/* Category tabs */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryRow}
         >
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.categoryChip, activeCategory === cat.id && styles.activeCategoryChip]}
-              onPress={() => setActiveCategory(cat.id)}
-            >
-              <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-              <Text style={[styles.categoryLabel, activeCategory === cat.id && styles.activeCategoryLabel]}>
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {CATEGORIES.map((cat) => {
+            const active = activeCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[
+                  styles.categoryChip,
+                  { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },
+                ]}
+                onPress={() => setActiveCategory(cat.id)}
+              >
+                <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+                <Text style={[styles.categoryLabel, { color: active ? '#FFFFFF' : colors.textMuted }]}>
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        {/* Count */}
-        <Text style={styles.countText}>
+        <Text style={[styles.countText, { color: colors.textMuted }]}>
           {earnedInCategory} / {filtered.length} rozet kazanıldı
         </Text>
 
-        {/* Badge grid */}
         <View style={styles.grid}>
           {filtered.map((achievement) => (
             <View key={achievement.id} style={styles.gridItem}>
@@ -252,7 +258,6 @@ function AchievementsSection() {
         </View>
       </ScrollView>
 
-      {/* Detail modal */}
       <Modal
         visible={!!selectedAchievement}
         transparent
@@ -265,10 +270,10 @@ function AchievementsSection() {
           onPress={() => setSelectedAchievement(null)}
         >
           {selectedAchievement && (
-            <View style={styles.modalCard}>
+            <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
               <Text style={styles.modalEmoji}>{selectedAchievement.emoji}</Text>
-              <Text style={styles.modalName}>{selectedAchievement.name}</Text>
-              <Text style={styles.modalDesc}>{selectedAchievement.description}</Text>
+              <Text style={[styles.modalName, { color: colors.text }]}>{selectedAchievement.name}</Text>
+              <Text style={[styles.modalDesc, { color: colors.textMuted }]}>{selectedAchievement.description}</Text>
 
               <View style={styles.modalMeta}>
                 <View style={[styles.categoryPill, { backgroundColor: (CATEGORY_COLORS[selectedAchievement.category] || '#9CA3AF') + '22' }]}>
@@ -277,8 +282,8 @@ function AchievementsSection() {
                     {CATEGORIES.find(c => c.id === selectedAchievement.category)?.label}
                   </Text>
                 </View>
-                <View style={styles.xpPill}>
-                  <Text style={styles.xpPillText}>⚡ +{selectedAchievement.xp} XP</Text>
+                <View style={[styles.xpPill, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.xpPillText, { color: colors.primary }]}>⚡ +{selectedAchievement.xp} XP</Text>
                 </View>
               </View>
 
@@ -291,8 +296,8 @@ function AchievementsSection() {
                   </Text>
                 </View>
               ) : (
-                <View style={styles.lockedBanner}>
-                  <Text style={styles.lockedText}>🔒 Henüz kazanılmadı</Text>
+                <View style={[styles.lockedBanner, { backgroundColor: colors.cardAlt }]}>
+                  <Text style={[styles.lockedText, { color: colors.textMuted }]}>🔒 Henüz kazanılmadı</Text>
                 </View>
               )}
             </View>
@@ -306,26 +311,15 @@ function AchievementsSection() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7FF',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1A1A2E',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  // Top-level view toggle (Sıralama / Rozetler)
   viewToggle: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    padding: 3,
+    marginTop: 4,
+    marginBottom: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 4,
   },
   viewToggleBtn: {
     flex: 1,
@@ -333,48 +327,27 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
-  activeViewToggle: {
-    backgroundColor: '#6C63FF',
-  },
   viewToggleText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
-  activeViewToggleText: {
-    color: '#FFFFFF',
-  },
-  // Leaderboard period toggle
-  toggle: {
+  periodRow: {
     flexDirection: 'row',
-    marginHorizontal: 16,
+    paddingHorizontal: 16,
+    gap: 8,
     marginBottom: 12,
-    backgroundColor: '#E8E6FF',
-    borderRadius: 12,
-    padding: 3,
   },
-  toggleBtn: {
-    flex: 1,
+  periodBtn: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 1.5,
   },
-  activeToggle: {
-    backgroundColor: '#FFFFFF',
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9CA3AF',
-  },
-  activeToggleText: {
-    color: '#6C63FF',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    paddingHorizontal: 20,
-    marginBottom: 8,
+  periodText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   empty: {
     alignItems: 'center',
@@ -387,14 +360,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
   },
   emptySubtext: {
     fontSize: 13,
-    color: '#9CA3AF',
     marginTop: 4,
   },
-  // Achievements
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   xpBadgeRow: {
     flexDirection: 'row',
@@ -403,7 +373,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   xpBadge: {
-    backgroundColor: '#6C63FF',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -411,31 +380,24 @@ const styles = StyleSheet.create({
   xpText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     borderRadius: 16,
+    borderWidth: 1,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
     marginBottom: 10,
   },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#6C63FF' },
-  statLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: '#F3F4F6' },
+  statValue: { fontSize: 22, fontWeight: '800' },
+  statLabel: { fontSize: 11, marginTop: 2 },
+  statDivider: { width: 1 },
   progressContainer: { paddingHorizontal: 16, marginBottom: 16 },
   progressBg: {
     height: 6,
-    backgroundColor: '#E8E6FF',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#6C63FF',
     borderRadius: 3,
   },
   categoryRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
@@ -446,17 +408,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
   },
-  activeCategoryChip: { backgroundColor: '#6C63FF', borderColor: '#6C63FF' },
   categoryEmoji: { fontSize: 14 },
-  categoryLabel: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  activeCategoryLabel: { color: '#FFFFFF' },
+  categoryLabel: { fontSize: 13, fontWeight: '600' },
   countText: {
     fontSize: 12,
-    color: '#9CA3AF',
     paddingHorizontal: 20,
     marginTop: 10,
     marginBottom: 6,
@@ -473,7 +430,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
   },
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -482,20 +438,19 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
     width: '100%',
   },
   modalEmoji: { fontSize: 56, marginBottom: 12 },
-  modalName: { fontSize: 20, fontWeight: '800', color: '#1A1A2E', marginBottom: 8, textAlign: 'center' },
-  modalDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 16, lineHeight: 20 },
+  modalName: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  modalDesc: { fontSize: 14, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
   modalMeta: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   categoryPill: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
   categoryPillText: { fontSize: 12, fontWeight: '600' },
-  xpPill: { backgroundColor: '#E8E6FF', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
-  xpPillText: { fontSize: 12, fontWeight: '700', color: '#6C63FF' },
+  xpPill: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  xpPillText: { fontSize: 12, fontWeight: '700' },
   earnedBanner: {
     backgroundColor: '#D1FAE5',
     borderRadius: 12,
@@ -506,12 +461,11 @@ const styles = StyleSheet.create({
   },
   earnedText: { color: '#059669', fontWeight: '700', fontSize: 14 },
   lockedBanner: {
-    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
     width: '100%',
     alignItems: 'center',
   },
-  lockedText: { color: '#9CA3AF', fontWeight: '600', fontSize: 14 },
+  lockedText: { fontWeight: '600', fontSize: 14 },
 });

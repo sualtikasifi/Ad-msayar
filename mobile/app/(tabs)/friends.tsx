@@ -13,12 +13,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FriendRow } from '@/components/FriendRow';
 import { Avatar } from '@/components/Avatar';
+import { AppHeader } from '@/components/AppHeader';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { useFriendStore } from '@/store/friendStore';
+import { useTheme } from '@/context/ThemeContext';
 import * as friendsApi from '@/api/friends';
 
 type TabType = 'friends' | 'requests';
 
 export default function FriendsScreen() {
+  const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; username: string; avatar_id: number }[]>([]);
@@ -76,165 +80,153 @@ export default function FriendsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <Text style={styles.title}>Arkadaşlar</Text>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <AppHeader />
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={handleSearch}
-          placeholder="Kullanıcı ara..."
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {searching && <ActivityIndicator style={styles.searchIcon} color="#6C63FF" size="small" />}
-      </View>
-
-      {/* Search Results */}
-      {searchResults.length > 0 && (
-        <View style={styles.searchResults}>
-          {searchResults.map((u) => (
-            <View key={u.id} style={styles.searchRow}>
-              <Avatar avatarId={u.avatar_id} size={36} />
-              <Text style={styles.searchUsername}>{u.username}</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => handleSendRequest(u.id, u.username)}
-              >
-                <Text style={styles.addButtonText}>+ Ekle</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+        {/* Search */}
+        <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            value={searchQuery}
+            onChangeText={handleSearch}
+            placeholder="Kullanıcı ara..."
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searching && <ActivityIndicator style={styles.searchIcon} color={colors.primary} size="small" />}
         </View>
-      )}
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-          onPress={() => setActiveTab('friends')}
-        >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Arkadaşlar ({friends.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-          onPress={() => setActiveTab('requests')}
-        >
-          <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-            İstekler {pendingRequests.length > 0 ? `(${pendingRequests.length})` : ''}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <View style={[styles.searchResults, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {searchResults.map((u) => (
+              <View key={u.id} style={[styles.searchRow, { borderBottomColor: colors.border }]}>
+                <Avatar avatarId={u.avatar_id} size={36} />
+                <Text style={[styles.searchUsername, { color: colors.text }]}>{u.username}</Text>
+                <TouchableOpacity
+                  style={[styles.addButton, { backgroundColor: colors.primary }]}
+                  onPress={() => handleSendRequest(u.id, u.username)}
+                >
+                  <Text style={styles.addButtonText}>+ Ekle</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
 
-      {/* Content */}
-      {activeTab === 'friends' ? (
-        <FlatList
-          data={friends}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <FriendRow
-              id={item.id}
-              username={item.username}
-              avatarId={item.avatar_id}
-              todaySteps={item.today_steps}
-            />
-          )}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🤝</Text>
-              <Text style={styles.emptyText}>Henüz arkadaşın yok.</Text>
-              <Text style={styles.emptySubtext}>Yukarıdan kullanıcı arayarak arkadaş ekle!</Text>
-            </View>
-          }
-        />
-      ) : (
-        <FlatList
-          data={pendingRequests}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <FriendRow
-              id={item.id}
-              username={item.from_user?.username ?? 'Bilinmiyor'}
-              avatarId={item.from_user?.avatar_id ?? 1}
-              rightAction={
-                <View style={styles.requestActions}>
-                  <TouchableOpacity
-                    style={styles.acceptBtn}
-                    onPress={() => handleAccept(item.id)}
-                    accessibilityLabel="Arkadaşlık isteğini kabul et"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.acceptText}>✓</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.declineBtn}
-                    onPress={() => handleDecline(item.id)}
-                    accessibilityLabel="Arkadaşlık isteğini reddet"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.declineText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              }
-            />
-          )}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>📭</Text>
-              <Text style={styles.emptyText}>Bekleyen istek yok</Text>
-            </View>
-          }
-        />
-      )}
-    </SafeAreaView>
+        {/* Tabs */}
+        <View style={[styles.tabs, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'friends' && { backgroundColor: colors.primary }]}
+            onPress={() => setActiveTab('friends')}
+          >
+            <Text style={[styles.tabText, { color: activeTab === 'friends' ? '#FFFFFF' : colors.textMuted }]}>
+              Arkadaşlar ({friends.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'requests' && { backgroundColor: colors.primary }]}
+            onPress={() => setActiveTab('requests')}
+          >
+            <Text style={[styles.tabText, { color: activeTab === 'requests' ? '#FFFFFF' : colors.textMuted }]}>
+              İstekler {pendingRequests.length > 0 ? `(${pendingRequests.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Content */}
+        {activeTab === 'friends' ? (
+          <FlatList
+            data={friends}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <FriendRow
+                id={item.id}
+                username={item.username}
+                avatarId={item.avatar_id}
+                todaySteps={item.today_steps}
+              />
+            )}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={styles.emptyEmoji}>🤝</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Henüz arkadaşın yok.</Text>
+                <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>Yukarıdan kullanıcı arayarak arkadaş ekle!</Text>
+              </View>
+            }
+          />
+        ) : (
+          <FlatList
+            data={pendingRequests}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <FriendRow
+                id={item.id}
+                username={item.from_user?.username ?? 'Bilinmiyor'}
+                avatarId={item.from_user?.avatar_id ?? 1}
+                rightAction={
+                  <View style={styles.requestActions}>
+                    <TouchableOpacity
+                      style={[styles.acceptBtn, { backgroundColor: colors.success }]}
+                      onPress={() => handleAccept(item.id)}
+                      accessibilityLabel="Arkadaşlık isteğini kabul et"
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.acceptText}>✓</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.declineBtn, { backgroundColor: colors.danger }]}
+                      onPress={() => handleDecline(item.id)}
+                      accessibilityLabel="Arkadaşlık isteğini reddet"
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.declineText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                }
+              />
+            )}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={styles.emptyEmoji}>📭</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Bekleyen istek yok</Text>
+              </View>
+            }
+          />
+        )}
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7FF',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1A1A2E',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     paddingHorizontal: 14,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1A1A2E',
   },
   searchIcon: {
     marginLeft: 8,
   },
   searchResults: {
     marginHorizontal: 16,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 8,
     overflow: 'hidden',
   },
@@ -243,17 +235,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   searchUsername: {
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
     fontWeight: '500',
-    color: '#1A1A2E',
   },
   addButton: {
-    backgroundColor: '#6C63FF',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -267,8 +256,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: '#E8E6FF',
     borderRadius: 12,
+    borderWidth: 1,
     padding: 3,
   },
   tab: {
@@ -277,23 +266,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
-  activeTab: {
-    backgroundColor: '#FFFFFF',
-  },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#9CA3AF',
-  },
-  activeTabText: {
-    color: '#6C63FF',
   },
   requestActions: {
     flexDirection: 'row',
     gap: 8,
   },
   acceptBtn: {
-    backgroundColor: '#10B981',
     borderRadius: 8,
     width: 32,
     height: 32,
@@ -306,7 +287,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   declineBtn: {
-    backgroundColor: '#EF4444',
     borderRadius: 8,
     width: 32,
     height: 32,
@@ -329,11 +309,9 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
   },
   emptySubtext: {
     fontSize: 13,
-    color: '#9CA3AF',
     marginTop: 4,
   },
 });
