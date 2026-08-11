@@ -13,7 +13,9 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Avatar } from '@/components/Avatar';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { LevelProgressBar } from '@/components/LevelBadge';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { useAuthStore } from '@/store/authStore';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { apiClient } from '@/api/client';
 import * as friendsApi from '@/api/friends';
 import * as stepsApi from '@/api/steps';
@@ -25,11 +27,12 @@ import type { PersonalRecords } from '@/api/stats';
 import type { AchievementsResponse } from '@/api/achievements';
 import { today as todayLocalDate, weekStart as weekStartLocalDate } from '@/utils/dateHelpers';
 
-function StatBox({ value, label, color = '#6C63FF' }: { value: string; label: string; color?: string }) {
+function StatBox({ value, label, color }: { value: string; label: string; color: string }) {
+  const { colors } = useTheme();
   return (
     <View style={statStyles.box}>
       <Text style={[statStyles.value, { color }]}>{value}</Text>
-      <Text style={statStyles.label}>{label}</Text>
+      <Text style={[statStyles.label, { color: colors.textMuted }]}>{label}</Text>
     </View>
   );
 }
@@ -37,12 +40,13 @@ function StatBox({ value, label, color = '#6C63FF' }: { value: string; label: st
 const statStyles = StyleSheet.create({
   box: { flex: 1, alignItems: 'center', paddingVertical: 4 },
   value: { fontSize: 18, fontWeight: '800' },
-  label: { fontSize: 10, color: '#9CA3AF', marginTop: 2, textAlign: 'center' },
+  label: { fontSize: 10, marginTop: 2, textAlign: 'center' },
 });
 
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { colors } = useTheme();
   const { user: me } = useAuthStore();
   const [profile, setProfile] = useState<PublicUser | null>(null);
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
@@ -133,221 +137,216 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6C63FF" />
-        </View>
-      </SafeAreaView>
+      <ScreenBackground>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        </SafeAreaView>
+      </ScreenBackground>
     );
   }
 
   if (!profile) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>Profil</Text>
-        {isMe ? (
-          <View style={styles.navRight}>
-            <TouchableOpacity
-              onPress={() => router.push('/profile/settings')}
-              accessibilityLabel="Ayarlar"
-              accessibilityRole="button"
-            >
-              <Text style={styles.settingsBtn}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push('/profile/edit')}
-              accessibilityLabel="Profili düzenle"
-              accessibilityRole="button"
-            >
-              <Text style={styles.editBtn}>✏️</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={{ width: 60 }} />
-        )}
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Avatar & info */}
-        <View style={styles.profileCard}>
-          <Avatar avatarId={profile.avatar_id} size={80} />
-          <Text style={styles.username}>{profile.username}</Text>
-          {isMe && me?.is_guest && (
-            <View style={styles.guestBadge}>
-              <Text style={styles.guestBadgeText}>👤 Misafir Hesap</Text>
-            </View>
-          )}
-          {achievements && achievements.total_xp >= 0 && (
-            <View style={{ width: '100%', marginTop: 8 }}>
-              <LevelProgressBar xp={achievements.total_xp} />
-            </View>
-          )}
-
-          {/* Stats row */}
-          <View style={styles.divider} />
-          {isMe && records ? (
-            <View style={styles.statsGrid}>
-              <StatBox
-                value={records.total_steps_all_time >= 1000
-                  ? `${(records.total_steps_all_time / 1000).toFixed(1)}B`
-                  : records.total_steps_all_time.toLocaleString()}
-                label="Toplam Adım"
-                color="#6C63FF"
-              />
-              <View style={styles.statDivider} />
-              <StatBox
-                value={`${records.current_streak}g`}
-                label="Mevcut Seri"
-                color="#EF4444"
-              />
-              <View style={styles.statDivider} />
-              <StatBox
-                value={String(challengeWins)}
-                label="Challenge Kazandı"
-                color="#F59E0B"
-              />
-              <View style={styles.statDivider} />
-              <StatBox
-                value={String(achievements?.earned_count ?? 0)}
-                label="Rozet"
-                color="#10B981"
-              />
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={[styles.back, { color: colors.primary }]}>← Geri</Text>
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: colors.text }]}>Profil</Text>
+          {isMe ? (
+            <View style={styles.navRight}>
+              <TouchableOpacity
+                onPress={() => router.push('/profile/settings')}
+                style={[styles.iconBtn, { backgroundColor: colors.cardAlt }]}
+                accessibilityLabel="Ayarlar"
+                accessibilityRole="button"
+              >
+                <Text style={styles.iconBtnText}>⚙️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/profile/edit')}
+                style={[styles.iconBtn, { backgroundColor: colors.cardAlt }]}
+                accessibilityLabel="Profili düzenle"
+                accessibilityRole="button"
+              >
+                <Text style={styles.iconBtnText}>✏️</Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.statsGrid}>
-              <StatBox
-                value={weeklySteps.toLocaleString()}
-                label="Bu Hafta"
-                color="#6C63FF"
-              />
-              <View style={styles.statDivider} />
-              <StatBox
-                value={String(achievements?.earned_count ?? 0)}
-                label="Rozet"
-                color="#10B981"
-              />
-            </View>
-          )}
-
-          {/* Recently earned achievements */}
-          {achievements && achievements.recently_earned.length > 0 && (
-            <>
-              <View style={styles.divider} />
-              <Text style={styles.sectionLabel}>Son Kazanılan Rozetler</Text>
-              <View style={styles.badgeRow}>
-                {achievements.recently_earned.slice(0, 5).map((a) => (
-                  <AchievementBadge key={a.id} achievement={a} size="sm" />
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* Friend action */}
-          {!isMe && (
-            <View style={styles.friendAction}>
-              {isFriend ? (
-                <View style={styles.friendBadge}>
-                  <Text style={styles.friendBadgeText}>✓ Arkadaş</Text>
-                </View>
-              ) : requestSent ? (
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingText}>⏳ İstek gönderildi</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.addBtn, actionLoading && styles.disabled]}
-                  onPress={handleAddFriend}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Text style={styles.addBtnText}>+ Arkadaş Ekle</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {isMe && me?.is_guest && (
-            <TouchableOpacity
-              style={styles.claimBtn}
-              onPress={() => router.push('/profile/claim')}
-            >
-              <Text style={styles.claimText}>🔓 Hesabını Oluştur</Text>
-            </TouchableOpacity>
-          )}
-
-          {isMe && (
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              onPress={() => useAuthStore.getState().logout()}
-            >
-              <Text style={styles.logoutText}>
-                {me?.is_guest ? 'Misafir Oturumunu Kapat' : 'Çıkış Yap'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ width: 60 }} />
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Avatar & info */}
+          <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Avatar avatarId={profile.avatar_id} size={80} />
+            <Text style={[styles.username, { color: colors.text }]}>{profile.username}</Text>
+            {isMe && me?.is_guest && (
+              <View style={[styles.guestBadge, { backgroundColor: colors.cardAlt }]}>
+                <Text style={[styles.guestBadgeText, { color: colors.textMuted }]}>👤 Misafir Hesap</Text>
+              </View>
+            )}
+            {achievements && achievements.total_xp >= 0 && (
+              <View style={{ width: '100%', marginTop: 8 }}>
+                <LevelProgressBar xp={achievements.total_xp} />
+              </View>
+            )}
+
+            {/* Stats row */}
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            {isMe && records ? (
+              <View style={styles.statsGrid}>
+                <StatBox
+                  value={records.total_steps_all_time >= 1000
+                    ? `${(records.total_steps_all_time / 1000).toFixed(1)}B`
+                    : records.total_steps_all_time.toLocaleString('tr-TR')}
+                  label="Toplam Adım"
+                  color={colors.primary}
+                />
+                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <StatBox
+                  value={`${records.current_streak}g`}
+                  label="Mevcut Seri"
+                  color={colors.danger}
+                />
+                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <StatBox
+                  value={String(challengeWins)}
+                  label="Challenge Kazandı"
+                  color={colors.warning}
+                />
+                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <StatBox
+                  value={String(achievements?.earned_count ?? 0)}
+                  label="Rozet"
+                  color={colors.success}
+                />
+              </View>
+            ) : (
+              <View style={styles.statsGrid}>
+                <StatBox
+                  value={weeklySteps.toLocaleString('tr-TR')}
+                  label="Bu Hafta"
+                  color={colors.primary}
+                />
+                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <StatBox
+                  value={String(achievements?.earned_count ?? 0)}
+                  label="Rozet"
+                  color={colors.success}
+                />
+              </View>
+            )}
+
+            {/* Recently earned achievements */}
+            {achievements && achievements.recently_earned.length > 0 && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Son Kazanılan Rozetler</Text>
+                <View style={styles.badgeRow}>
+                  {achievements.recently_earned.slice(0, 5).map((a) => (
+                    <AchievementBadge key={a.id} achievement={a} size="sm" />
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Friend action */}
+            {!isMe && (
+              <View style={styles.friendAction}>
+                {isFriend ? (
+                  <View style={[styles.friendBadge, { backgroundColor: 'rgba(16,185,129,0.16)' }]}>
+                    <Text style={[styles.friendBadgeText, { color: colors.success }]}>✓ Arkadaş</Text>
+                  </View>
+                ) : requestSent ? (
+                  <View style={[styles.pendingBadge, { backgroundColor: 'rgba(245,158,11,0.16)' }]}>
+                    <Text style={[styles.pendingText, { color: colors.warning }]}>⏳ İstek gönderildi</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.addBtn, { backgroundColor: colors.primary }, actionLoading && styles.disabled]}
+                    onPress={handleAddFriend}
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.addBtnText}>+ Arkadaş Ekle</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {isMe && me?.is_guest && (
+              <TouchableOpacity
+                style={[styles.claimBtn, { backgroundColor: colors.primary }]}
+                onPress={() => router.push('/profile/claim')}
+              >
+                <Text style={styles.claimText}>🔓 Hesabını Oluştur</Text>
+              </TouchableOpacity>
+            )}
+
+            {isMe && (
+              <TouchableOpacity
+                style={[styles.logoutBtn, { backgroundColor: 'rgba(239,68,68,0.14)' }]}
+                onPress={() => useAuthStore.getState().logout()}
+              >
+                <Text style={[styles.logoutText, { color: colors.danger }]}>
+                  {me?.is_guest ? 'Misafir Oturumunu Kapat' : 'Çıkış Yap'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7FF' },
+  container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
-  navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E' },
-  navRight: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  settingsBtn: { fontSize: 18 },
-  editBtn: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
+  back: { fontSize: 15, fontWeight: '600' },
+  navTitle: { fontSize: 17, fontWeight: '700' },
+  navRight: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnText: { fontSize: 15 },
   profileCard: {
-    backgroundColor: '#FFFFFF',
     margin: 16,
     borderRadius: 20,
+    borderWidth: 1,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
   },
   username: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1A1A2E',
     marginTop: 14,
     marginBottom: 6,
   },
-  xpBadge: {
-    backgroundColor: '#E8E6FF',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginBottom: 8,
-  },
-  xpText: { color: '#6C63FF', fontWeight: '700', fontSize: 12 },
   divider: {
     width: '100%',
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginVertical: 16,
   },
   statsGrid: {
@@ -355,11 +354,10 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
-  statDivider: { width: 1, height: 32, backgroundColor: '#F3F4F6' },
+  statDivider: { width: 1, height: 32 },
   sectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
     marginBottom: 10,
     alignSelf: 'flex-start',
   },
@@ -371,37 +369,33 @@ const styles = StyleSheet.create({
   },
   friendAction: { width: '100%', marginTop: 4 },
   friendBadge: {
-    backgroundColor: '#D1FAE5',
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
   },
-  friendBadgeText: { color: '#059669', fontWeight: '600' },
+  friendBadgeText: { fontWeight: '600' },
   pendingBadge: {
-    backgroundColor: '#FEF3C7',
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
   },
-  pendingText: { color: '#D97706', fontWeight: '600' },
+  pendingText: { fontWeight: '600' },
   addBtn: {
-    backgroundColor: '#6C63FF',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
+    width: '100%',
   },
   addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   disabled: { opacity: 0.6 },
   guestBadge: {
-    backgroundColor: '#F3F4F6',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 5,
     marginBottom: 8,
   },
-  guestBadgeText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
+  guestBadgeText: { fontSize: 13, fontWeight: '600' },
   claimBtn: {
-    backgroundColor: '#6C63FF',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
@@ -410,12 +404,11 @@ const styles = StyleSheet.create({
   },
   claimText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   logoutBtn: {
-    backgroundColor: '#FEE2E2',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
     width: '100%',
     marginTop: 8,
   },
-  logoutText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
+  logoutText: { fontWeight: '700', fontSize: 15 },
 });

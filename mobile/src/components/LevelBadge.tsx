@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { getLevelInfo } from '../utils/levelUtils';
+import { useTheme } from '@/context/ThemeContext';
 
 interface LevelBadgeProps {
   xp: number;
@@ -51,6 +52,7 @@ export function LevelBadge({ xp, size = 'md', showTitle = false }: LevelBadgePro
 
 /** Full XP progress bar for use in profile */
 export function LevelProgressBar({ xp }: { xp: number }) {
+  const { colors } = useTheme();
   const info = getLevelInfo(xp);
   const pct = info.xpNeededForNext ? info.progress * 100 : 100;
 
@@ -63,7 +65,7 @@ export function LevelProgressBar({ xp }: { xp: number }) {
             <Text style={[barStyles.levelText, { color: info.color }]}>
               Lv.{info.level} — {info.title}
             </Text>
-            <Text style={barStyles.xpText}>
+            <Text style={[barStyles.xpText, { color: colors.textMuted }]}>
               {info.xpNeededForNext
                 ? `${info.xpIntoLevel} / ${info.xpNeededForNext} XP`
                 : `${xp} XP — Maksimum Seviye`}
@@ -71,10 +73,10 @@ export function LevelProgressBar({ xp }: { xp: number }) {
           </View>
         </View>
         {info.nextLevelXp && (
-          <Text style={barStyles.nextLabel}>Sonraki: {info.nextLevelXp} XP</Text>
+          <Text style={[barStyles.nextLabel, { color: colors.textMuted }]}>Sonraki: {info.nextLevelXp} XP</Text>
         )}
       </View>
-      <View style={barStyles.track}>
+      <View style={[barStyles.track, { backgroundColor: colors.cardAlt }]}>
         <View style={[barStyles.fill, { width: `${pct}%`, backgroundColor: info.color }]} />
       </View>
     </View>
@@ -105,11 +107,10 @@ const barStyles = StyleSheet.create({
   left: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   emoji: { fontSize: 24 },
   levelText: { fontSize: 14, fontWeight: '700' },
-  xpText: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
-  nextLabel: { fontSize: 11, color: '#9CA3AF' },
+  xpText: { fontSize: 11, marginTop: 1 },
+  nextLabel: { fontSize: 11 },
   track: {
     height: 8,
-    backgroundColor: '#E5E7EB',
     borderRadius: 4,
     overflow: 'hidden',
   },

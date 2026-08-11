@@ -16,6 +16,8 @@ import { Avatar } from '@/components/Avatar';
 import { useFriendStore } from '@/store/friendStore';
 import * as challengesApi from '@/api/challenges';
 import type { ChallengeType, ChallengeMode } from '@/types';
+import { ScreenBackground } from '@/components/ScreenBackground';
+import { useTheme } from '@/context/ThemeContext';
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -53,6 +55,7 @@ const MODE_OPTIONS: ModeOption[] = [
 
 export default function NewChallengeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { friends, loadFriends } = useFriendStore();
 
   const [mode, setMode] = useState<ChallengeMode>('standard');
@@ -146,202 +149,218 @@ export default function NewChallengeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>Yeni Challenge</Text>
-        <View style={{ width: 60 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-
-        {/* Mode selector */}
-        <Text style={styles.label}>Challenge Modu</Text>
-        <View style={styles.modeGrid}>
-          {MODE_OPTIONS.map((opt) => {
-            const active = mode === opt.mode;
-            return (
-              <TouchableOpacity
-                key={opt.mode}
-                style={[styles.modeCard, active && styles.activeModeCard]}
-                onPress={() => selectMode(opt)}
-              >
-                <Text style={styles.modeEmoji}>{opt.emoji}</Text>
-                <Text style={[styles.modeLabel, active && styles.activeModeLabel]}>{opt.label}</Text>
-                <Text style={styles.modeDesc}>{opt.desc}</Text>
-              </TouchableOpacity>
-            );
-          })}
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={[styles.back, { color: colors.primary }]}>← Geri</Text>
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: colors.text }]}>Yeni Challenge</Text>
+          <View style={{ width: 60 }} />
         </View>
 
-        {/* Type selector — hidden for duel (forced 1v1) */}
-        {!isDuel && (
-          <>
-            <Text style={styles.label}>Katılımcı Türü</Text>
-            <View style={styles.typeRow}>
-              <TouchableOpacity
-                style={[styles.typeBtn, type === '1v1' && styles.activeType]}
-                onPress={() => { setType('1v1'); setSelected([]); }}
-              >
-                <Text style={styles.typeEmoji}>⚔️</Text>
-                <Text style={[styles.typeLabel, type === '1v1' && styles.activeTypeLabel]}>1 vs 1</Text>
-                <Text style={styles.typeSubLabel}>2 kişi</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeBtn, type === 'group' && styles.activeType]}
-                onPress={() => { setType('group'); setSelected([]); }}
-              >
-                <Text style={styles.typeEmoji}>👥</Text>
-                <Text style={[styles.typeLabel, type === 'group' && styles.activeTypeLabel]}>Grup</Text>
-                <Text style={styles.typeSubLabel}>2-4 kişi</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+        <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
 
-        {/* Title */}
-        <Text style={styles.label}>Başlık (isteğe bağlı)</Text>
-        <TextInput
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Challenge ismi..."
-          maxLength={100}
-        />
-
-        {/* Race: step goal */}
-        {isRace && (
-          <>
-            <Text style={styles.label}>Hedef Adım Sayısı</Text>
-            <TextInput
-              style={styles.input}
-              value={stepGoal}
-              onChangeText={setStepGoal}
-              placeholder="örn: 10000"
-              keyboardType="number-pad"
-            />
-          </>
-        )}
-
-        {/* Dates — duel hides end_date */}
-        <Text style={styles.label}>Başlangıç Tarihi</Text>
-        <TextInput
-          style={styles.input}
-          value={startDate}
-          onChangeText={setStartDate}
-          placeholder="YYYY-MM-DD"
-          keyboardType="numbers-and-punctuation"
-        />
-
-        {!isDuel && (
-          <>
-            <Text style={styles.label}>Bitiş Tarihi</Text>
-            <TextInput
-              style={styles.input}
-              value={endDate}
-              onChangeText={setEndDate}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-            />
-          </>
-        )}
-
-        {isDuel && (
-          <View style={styles.duelNote}>
-            <Text style={styles.duelNoteText}>⏱ Düello başladıktan 24 saat sonra otomatik tamamlanır</Text>
+          {/* Mode selector */}
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Challenge Modu</Text>
+          <View style={styles.modeGrid}>
+            {MODE_OPTIONS.map((opt) => {
+              const active = mode === opt.mode;
+              return (
+                <TouchableOpacity
+                  key={opt.mode}
+                  style={[
+                    styles.modeCard,
+                    { backgroundColor: active ? colors.primaryLight : colors.card, borderColor: active ? colors.primary : colors.border },
+                  ]}
+                  onPress={() => selectMode(opt)}
+                >
+                  <Text style={styles.modeEmoji}>{opt.emoji}</Text>
+                  <Text style={[styles.modeLabel, { color: active ? colors.primary : colors.textMuted }]}>{opt.label}</Text>
+                  <Text style={[styles.modeDesc, { color: colors.textMuted }]}>{opt.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        )}
 
-        {/* Penalty toggle */}
-        <View style={styles.penaltyHeader}>
-          <View>
-            <Text style={styles.label}>😅 Kaybeden Cezası</Text>
-            <Text style={styles.penaltySubLabel}>Kaybedene hatırlatma gönderilir</Text>
-          </View>
-          <Switch
-            value={penaltyEnabled}
-            onValueChange={setPenaltyEnabled}
-            trackColor={{ false: '#E5E7EB', true: '#C4BFFF' }}
-            thumbColor={penaltyEnabled ? '#6C63FF' : '#9CA3AF'}
-          />
-        </View>
-        {penaltyEnabled && (
-          <TextInput
-            style={[styles.input, styles.penaltyInput]}
-            value={penaltyText}
-            onChangeText={setPenaltyText}
-            placeholder="örn: Kahve ısmarlamak, story atmak..."
-            maxLength={200}
-            multiline
-          />
-        )}
-
-        {/* Friend selection */}
-        <Text style={styles.label}>
-          Arkadaş Seç ({selected.length}/{maxParticipants})
-        </Text>
-        {friends.length === 0 ? (
-          <Text style={styles.noFriends}>Önce arkadaş eklemeniz gerekiyor</Text>
-        ) : (
-          friends.map((f) => {
-            const isSelected = selected.includes(f.id);
-            return (
-              <TouchableOpacity
-                key={f.id}
-                style={[styles.friendRow, isSelected && styles.selectedRow]}
-                onPress={() => toggleFriend(f.id)}
-              >
-                <Avatar avatarId={f.avatar_id} size={40} />
-                <View style={styles.friendInfo}>
-                  <Text style={styles.friendName}>{f.username}</Text>
-                  <Text style={styles.friendSteps}>{f.today_steps.toLocaleString()} adım bugün</Text>
-                </View>
-                <View style={[styles.checkbox, isSelected && styles.checkedBox]}>
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-
-        {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitBtn, loading && styles.disabled]}
-          onPress={handleCreate}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.submitText}>🏆 Challenge Başlat!</Text>
+          {/* Type selector — hidden for duel (forced 1v1) */}
+          {!isDuel && (
+            <>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Katılımcı Türü</Text>
+              <View style={styles.typeRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeBtn,
+                    { backgroundColor: type === '1v1' ? colors.primaryLight : colors.card, borderColor: type === '1v1' ? colors.primary : colors.border },
+                  ]}
+                  onPress={() => { setType('1v1'); setSelected([]); }}
+                >
+                  <Text style={styles.typeEmoji}>⚔️</Text>
+                  <Text style={[styles.typeLabel, { color: type === '1v1' ? colors.primary : colors.textMuted }]}>1 vs 1</Text>
+                  <Text style={[styles.typeSubLabel, { color: colors.textMuted }]}>2 kişi</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.typeBtn,
+                    { backgroundColor: type === 'group' ? colors.primaryLight : colors.card, borderColor: type === 'group' ? colors.primary : colors.border },
+                  ]}
+                  onPress={() => { setType('group'); setSelected([]); }}
+                >
+                  <Text style={styles.typeEmoji}>👥</Text>
+                  <Text style={[styles.typeLabel, { color: type === 'group' ? colors.primary : colors.textMuted }]}>Grup</Text>
+                  <Text style={[styles.typeSubLabel, { color: colors.textMuted }]}>2-4 kişi</Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Title */}
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Başlık (isteğe bağlı)</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Challenge ismi..."
+            placeholderTextColor={colors.textMuted}
+            maxLength={100}
+          />
+
+          {/* Race: step goal */}
+          {isRace && (
+            <>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Hedef Adım Sayısı</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                value={stepGoal}
+                onChangeText={setStepGoal}
+                placeholder="örn: 10000"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+              />
+            </>
+          )}
+
+          {/* Dates — duel hides end_date */}
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Başlangıç Tarihi</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+            value={startDate}
+            onChangeText={setStartDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="numbers-and-punctuation"
+          />
+
+          {!isDuel && (
+            <>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Bitiş Tarihi</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                value={endDate}
+                onChangeText={setEndDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numbers-and-punctuation"
+              />
+            </>
+          )}
+
+          {isDuel && (
+            <View style={[styles.duelNote, { backgroundColor: colors.primaryLight }]}>
+              <Text style={[styles.duelNoteText, { color: colors.primary }]}>⏱ Düello başladıktan 24 saat sonra otomatik tamamlanır</Text>
+            </View>
+          )}
+
+          {/* Penalty toggle */}
+          <View style={styles.penaltyHeader}>
+            <View>
+              <Text style={[styles.label, { color: colors.textSecondary, marginTop: 0 }]}>😅 Kaybeden Cezası</Text>
+              <Text style={[styles.penaltySubLabel, { color: colors.textMuted }]}>Kaybedene hatırlatma gönderilir</Text>
+            </View>
+            <Switch
+              value={penaltyEnabled}
+              onValueChange={setPenaltyEnabled}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={penaltyEnabled ? colors.primary : colors.textMuted}
+            />
+          </View>
+          {penaltyEnabled && (
+            <TextInput
+              style={[styles.input, styles.penaltyInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+              value={penaltyText}
+              onChangeText={setPenaltyText}
+              placeholder="örn: Kahve ısmarlamak, story atmak..."
+              placeholderTextColor={colors.textMuted}
+              maxLength={200}
+              multiline
+            />
+          )}
+
+          {/* Friend selection */}
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            Arkadaş Seç ({selected.length}/{maxParticipants})
+          </Text>
+          {friends.length === 0 ? (
+            <Text style={[styles.noFriends, { color: colors.textMuted }]}>Önce arkadaş eklemeniz gerekiyor</Text>
+          ) : (
+            friends.map((f) => {
+              const isSelected = selected.includes(f.id);
+              return (
+                <TouchableOpacity
+                  key={f.id}
+                  style={[
+                    styles.friendRow,
+                    { backgroundColor: isSelected ? colors.primaryLight : colors.card, borderColor: isSelected ? colors.primary : colors.border },
+                  ]}
+                  onPress={() => toggleFriend(f.id)}
+                >
+                  <Avatar avatarId={f.avatar_id} size={40} />
+                  <View style={styles.friendInfo}>
+                    <Text style={[styles.friendName, { color: colors.text }]}>{f.username}</Text>
+                    <Text style={[styles.friendSteps, { color: colors.textMuted }]}>{f.today_steps.toLocaleString('tr-TR')} adım bugün</Text>
+                  </View>
+                  <View style={[styles.checkbox, { borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary : 'transparent' }]}>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.submitBtn, { backgroundColor: colors.primary }, loading && styles.disabled]}
+            onPress={handleCreate}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitText}>🏆 Challenge Başlat!</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7FF' },
+  container: { flex: 1 },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
-  navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E' },
+  back: { fontSize: 15, fontWeight: '600' },
+  navTitle: { fontSize: 17, fontWeight: '700' },
   scroll: { flex: 1, paddingHorizontal: 16 },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginTop: 20,
     marginBottom: 8,
   },
@@ -349,61 +368,43 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   modeCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 14,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  activeModeCard: {
-    borderColor: '#6C63FF',
-    backgroundColor: '#F0EEFF',
   },
   modeEmoji: { fontSize: 24, marginBottom: 4 },
-  modeLabel: { fontSize: 16, fontWeight: '700', color: '#9CA3AF', marginBottom: 2 },
-  activeModeLabel: { color: '#6C63FF' },
-  modeDesc: { fontSize: 12, color: '#9CA3AF' },
+  modeLabel: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  modeDesc: { fontSize: 12 },
   typeRow: {
     flexDirection: 'row',
     gap: 12,
   },
   typeBtn: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  activeType: {
-    borderColor: '#6C63FF',
-    backgroundColor: '#F0EEFF',
   },
   typeEmoji: { fontSize: 28, marginBottom: 6 },
-  typeLabel: { fontSize: 16, fontWeight: '700', color: '#9CA3AF' },
-  activeTypeLabel: { color: '#6C63FF' },
-  typeSubLabel: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  typeLabel: { fontSize: 16, fontWeight: '700' },
+  typeSubLabel: { fontSize: 12, marginTop: 2 },
   input: {
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: '#1A1A2E',
-    backgroundColor: '#FFFFFF',
   },
   penaltyInput: {
     minHeight: 60,
     textAlignVertical: 'top',
   },
   duelNote: {
-    backgroundColor: '#EEF2FF',
     borderRadius: 10,
     padding: 12,
     marginTop: 8,
   },
-  duelNoteText: { fontSize: 13, color: '#4F46E5', fontWeight: '500' },
+  duelNoteText: { fontSize: 13, fontWeight: '500' },
   penaltyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,41 +412,29 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
   },
-  penaltySubLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  noFriends: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', padding: 20 },
+  penaltySubLabel: { fontSize: 11, marginTop: 2 },
+  noFriends: { fontSize: 14, textAlign: 'center', padding: 20 },
   friendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-  },
-  selectedRow: {
-    borderColor: '#6C63FF',
-    backgroundColor: '#F0EEFF',
   },
   friendInfo: { flex: 1, marginLeft: 12 },
-  friendName: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
-  friendSteps: { fontSize: 12, color: '#6B7280' },
+  friendName: { fontSize: 15, fontWeight: '600' },
+  friendSteps: { fontSize: 12 },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkedBox: {
-    backgroundColor: '#6C63FF',
-    borderColor: '#6C63FF',
-  },
   checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   submitBtn: {
-    backgroundColor: '#6C63FF',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',

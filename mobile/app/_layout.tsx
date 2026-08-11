@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
 import { useAchievementStore } from '@/store/achievementStore';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socketService';
@@ -15,6 +16,11 @@ import {
 } from '@/services/notificationService';
 import { AchievementToastManager } from '@/components/AchievementToast';
 import type { Achievement } from '@/api/achievements';
+
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
 
 export default function RootLayout() {
   const { isAuthenticated, isLoading, loadFromStorage, createGuestSession } = useAuthStore();
@@ -94,6 +100,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <View style={{ flex: 1 }}>
+            <ThemedStatusBar />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(tabs)" />

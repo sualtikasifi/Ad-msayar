@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -15,9 +14,12 @@ import { useAuthStore } from '@/store/authStore';
 import * as usersApi from '@/api/users';
 import { Avatar } from '@/components/Avatar';
 import { AVATAR_IDS } from '@/constants/avatars';
+import { ScreenBackground } from '@/components/ScreenBackground';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { user, updateUser } = useAuthStore();
 
   const [username, setUsername] = useState(user?.username ?? '');
@@ -116,176 +118,174 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Nav */}
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>Profili Düzenle</Text>
-        <View style={{ width: 60 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* ── Avatar ───────────────────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Profil Fotoğrafı</Text>
-          <View style={styles.avatarPickerRow}>
-            {AVATAR_IDS.map((id) => {
-              const selected = id === user?.avatar_id;
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[styles.avatarOption, selected && styles.avatarOptionSelected]}
-                  onPress={() => handleSelectAvatar(id)}
-                  disabled={avatarSaving}
-                  activeOpacity={0.7}
-                >
-                  <Avatar avatarId={id} size={56} />
-                  {avatarSaving && selected && (
-                    <View style={styles.avatarOptionLoading}>
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ── Kullanıcı Adı ─────────────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Kullanıcı Adı</Text>
-          <Text style={styles.label}>E-posta</Text>
-          <View style={styles.readonlyField}>
-            <Text style={styles.readonlyText}>{user?.email ?? '—'}</Text>
-          </View>
-          <Text style={styles.label}>Kullanıcı Adı</Text>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={(v) => {
-              setUsername(v);
-              setProfileSuccess('');
-              setProfileError('');
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="kullanici_adi"
-            placeholderTextColor="#9CA3AF"
-          />
-
-          {profileSuccess ? <Text style={styles.successMsg}>{profileSuccess}</Text> : null}
-          {profileError ? <Text style={styles.errorMsg}>{profileError}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.saveBtn, profileLoading && styles.disabled]}
-            onPress={handleSaveProfile}
-            disabled={profileLoading}
-          >
-            {profileLoading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Kaydet</Text>
-            )}
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        {/* Nav */}
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={[styles.back, { color: colors.primary }]}>← Geri</Text>
           </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: colors.text }]}>Profili Düzenle</Text>
+          <View style={{ width: 60 }} />
         </View>
 
-        {/* ── Şifre Değiştir ────────────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Şifre Değiştir</Text>
-          <Text style={styles.label}>Mevcut Şifre</Text>
-          <TextInput
-            style={styles.input}
-            value={currentPassword}
-            onChangeText={(v) => {
-              setCurrentPassword(v);
-              setPasswordSuccess('');
-              setPasswordError('');
-            }}
-            secureTextEntry
-            placeholder="••••••"
-            placeholderTextColor="#9CA3AF"
-          />
-          <Text style={styles.label}>Yeni Şifre</Text>
-          <TextInput
-            style={styles.input}
-            value={newPassword}
-            onChangeText={(v) => {
-              setNewPassword(v);
-              setPasswordSuccess('');
-              setPasswordError('');
-            }}
-            secureTextEntry
-            placeholder="En az 6 karakter"
-            placeholderTextColor="#9CA3AF"
-          />
-          <Text style={styles.label}>Yeni Şifre Tekrar</Text>
-          <TextInput
-            style={[styles.input, newPassword && confirmPassword && newPassword !== confirmPassword && styles.inputError]}
-            value={confirmPassword}
-            onChangeText={(v) => {
-              setConfirmPassword(v);
-              setPasswordSuccess('');
-              setPasswordError('');
-            }}
-            secureTextEntry
-            placeholder="Şifreyi tekrar girin"
-            placeholderTextColor="#9CA3AF"
-          />
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-          {passwordSuccess ? <Text style={styles.successMsg}>{passwordSuccess}</Text> : null}
-          {passwordError ? <Text style={styles.errorMsg}>{passwordError}</Text> : null}
+          {/* ── Avatar ───────────────────────────────────── */}
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Profil Fotoğrafı</Text>
+            <View style={styles.avatarPickerRow}>
+              {AVATAR_IDS.map((id) => {
+                const selected = id === user?.avatar_id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.avatarOption, { borderColor: selected ? colors.primary : 'transparent' }]}
+                    onPress={() => handleSelectAvatar(id)}
+                    disabled={avatarSaving}
+                    activeOpacity={0.7}
+                  >
+                    <Avatar avatarId={id} size={56} />
+                    {avatarSaving && selected && (
+                      <View style={styles.avatarOptionLoading}>
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.saveBtn, passwordLoading && styles.disabled]}
-            onPress={handleChangePassword}
-            disabled={passwordLoading}
-          >
-            {passwordLoading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Şifreyi Güncelle</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+          {/* ── Kullanıcı Adı ─────────────────────────────── */}
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Kullanıcı Adı</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>E-posta</Text>
+            <View style={[styles.readonlyField, { backgroundColor: colors.cardAlt }]}>
+              <Text style={[styles.readonlyText, { color: colors.textMuted }]}>{user?.email ?? '—'}</Text>
+            </View>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Kullanıcı Adı</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.cardAlt, borderColor: colors.border, color: colors.text }]}
+              value={username}
+              onChangeText={(v) => {
+                setUsername(v);
+                setProfileSuccess('');
+                setProfileError('');
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="kullanici_adi"
+              placeholderTextColor={colors.textMuted}
+            />
 
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    </SafeAreaView>
+            {profileSuccess ? <Text style={[styles.successMsg, { color: colors.success }]}>{profileSuccess}</Text> : null}
+            {profileError ? <Text style={[styles.errorMsg, { color: colors.danger }]}>{profileError}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: colors.primary }, profileLoading && styles.disabled]}
+              onPress={handleSaveProfile}
+              disabled={profileLoading}
+            >
+              {profileLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.saveBtnText}>Kaydet</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Şifre Değiştir ────────────────────────────── */}
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Şifre Değiştir</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Mevcut Şifre</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.cardAlt, borderColor: colors.border, color: colors.text }]}
+              value={currentPassword}
+              onChangeText={(v) => {
+                setCurrentPassword(v);
+                setPasswordSuccess('');
+                setPasswordError('');
+              }}
+              secureTextEntry
+              placeholder="••••••"
+              placeholderTextColor={colors.textMuted}
+            />
+            <Text style={[styles.label, { color: colors.textMuted }]}>Yeni Şifre</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.cardAlt, borderColor: colors.border, color: colors.text }]}
+              value={newPassword}
+              onChangeText={(v) => {
+                setNewPassword(v);
+                setPasswordSuccess('');
+                setPasswordError('');
+              }}
+              secureTextEntry
+              placeholder="En az 6 karakter"
+              placeholderTextColor={colors.textMuted}
+            />
+            <Text style={[styles.label, { color: colors.textMuted }]}>Yeni Şifre Tekrar</Text>
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: colors.cardAlt, borderColor: colors.border, color: colors.text },
+                newPassword && confirmPassword && newPassword !== confirmPassword && { borderColor: colors.danger },
+              ]}
+              value={confirmPassword}
+              onChangeText={(v) => {
+                setConfirmPassword(v);
+                setPasswordSuccess('');
+                setPasswordError('');
+              }}
+              secureTextEntry
+              placeholder="Şifreyi tekrar girin"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            {passwordSuccess ? <Text style={[styles.successMsg, { color: colors.success }]}>{passwordSuccess}</Text> : null}
+            {passwordError ? <Text style={[styles.errorMsg, { color: colors.danger }]}>{passwordError}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: colors.primary }, passwordLoading && styles.disabled]}
+              onPress={handleChangePassword}
+              disabled={passwordLoading}
+            >
+              {passwordLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.saveBtnText}>Şifreyi Güncelle</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7FF' },
+  container: { flex: 1 },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
-  navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E' },
+  back: { fontSize: 15, fontWeight: '600' },
+  navTitle: { fontSize: 17, fontWeight: '700' },
   scroll: { padding: 16, gap: 16 },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
+    borderWidth: 1,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1A2E',
     marginBottom: 16,
   },
   avatarPickerRow: {
@@ -300,10 +300,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  avatarOptionSelected: {
-    borderColor: '#6C63FF',
   },
   avatarOptionLoading: {
     ...StyleSheet.absoluteFillObject,
@@ -315,47 +311,35 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
     marginBottom: 6,
     marginTop: 12,
   },
   input: {
-    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1A1A2E',
-  },
-  inputError: {
-    borderColor: '#EF4444',
   },
   readonlyField: {
-    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   readonlyText: {
     fontSize: 15,
-    color: '#6B7280',
   },
   successMsg: {
-    color: '#059669',
     fontSize: 13,
     fontWeight: '600',
     marginTop: 10,
   },
   errorMsg: {
-    color: '#EF4444',
     fontSize: 13,
     fontWeight: '600',
     marginTop: 10,
   },
   saveBtn: {
-    backgroundColor: '#6C63FF',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',

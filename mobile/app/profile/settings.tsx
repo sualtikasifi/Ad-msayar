@@ -17,6 +17,7 @@ import type { NotificationPreferences } from '@/api/notifications';
 import { useTheme } from '@/context/ThemeContext';
 import type { ThemeMode } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
+import { ScreenBackground } from '@/components/ScreenBackground';
 
 const STEP_GOAL_PRESETS = [5000, 7500, 10000, 12500, 15000, 20000];
 
@@ -103,8 +104,9 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={[styles.navBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+      <View style={styles.navBar}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={[styles.back, { color: colors.primary }]}>← Geri</Text>
         </TouchableOpacity>
@@ -112,7 +114,7 @@ export default function SettingsScreen() {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: colors.bg }}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Step Goal section */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>👟 Günlük Adım Hedefi</Text>
         <Text style={[styles.sectionDesc, { color: colors.textMuted }]}>
@@ -144,7 +146,7 @@ export default function SettingsScreen() {
 
         {/* Theme section */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>🌗 Tema</Text>
-        <View style={[styles.list, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+        <View style={[styles.list, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {THEME_OPTIONS.map((opt, i) => (
             <TouchableOpacity
               key={opt.mode}
@@ -174,7 +176,7 @@ export default function SettingsScreen() {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
-          <View style={[styles.list, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+          <View style={[styles.list, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {PREF_ITEMS.map((item) => (
               <View key={item.key} style={[styles.row, { borderBottomColor: colors.border }]}>
                 <View style={styles.rowLeft}>
@@ -202,7 +204,7 @@ export default function SettingsScreen() {
 
         {/* Danger zone */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>⚠️ Tehlikeli Bölge</Text>
-        <View style={[styles.list, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+        <View style={[styles.list, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 0 }]}
             onPress={() => router.push('/profile/delete-account')}
@@ -210,7 +212,7 @@ export default function SettingsScreen() {
             <View style={styles.rowLeft}>
               <Text style={styles.rowEmoji}>🗑️</Text>
               <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: '#EF4444' }]}>Hesabımı Sil</Text>
+                <Text style={[styles.rowTitle, { color: colors.danger }]}>Hesabımı Sil</Text>
                 <Text style={[styles.rowDesc, { color: colors.textMuted }]}>
                   Tüm verilerini kalıcı olarak siler
                 </Text>
@@ -221,22 +223,23 @@ export default function SettingsScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7FF' },
+  container: { flex: 1 },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  back: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
-  navTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E' },
+  back: { fontSize: 15, fontWeight: '600' },
+  navTitle: { fontSize: 17, fontWeight: '700' },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -277,12 +280,8 @@ const styles = StyleSheet.create({
   list: {
     marginHorizontal: 16,
     borderRadius: 16,
+    borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
   row: {
     flexDirection: 'row',
