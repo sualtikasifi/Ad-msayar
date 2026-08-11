@@ -11,6 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as statsApi from '@/api/stats';
 import type { DailyPoint, WeeklyPoint, PersonalRecords, HeatmapPoint } from '@/api/stats';
+import { AppHeader } from '@/components/AppHeader';
+import { ScreenBackground } from '@/components/ScreenBackground';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = SCREEN_WIDTH - 40;
@@ -22,31 +25,18 @@ type ChartPeriod = 'week' | 'month' | '12weeks';
 function BarChart({
   data,
   labels,
-  color = '#6C63FF',
-  goal,
+  colors,
 }: {
   data: number[];
   labels: string[];
-  color?: string;
-  goal?: number;
+  colors: ThemeColors;
 }) {
-  const max = Math.max(...data, goal ?? 0, 1);
+  const max = Math.max(...data, 1);
   const barWidth = Math.floor((CHART_WIDTH - 32) / data.length) - 3;
 
   return (
     <View style={barStyles.container}>
-      {/* Y-axis labels */}
       <View style={barStyles.chartArea}>
-        {/* Goal line */}
-        {goal && (
-          <View
-            style={[
-              barStyles.goalLine,
-              { bottom: `${(goal / max) * 100}%` as unknown as number },
-            ]}
-          />
-        )}
-        {/* Bars */}
         <View style={barStyles.bars}>
           {data.map((val, i) => {
             const heightPct = max > 0 ? (val / max) * 100 : 0;
@@ -58,7 +48,7 @@ function BarChart({
                     barStyles.bar,
                     {
                       height: `${Math.max(heightPct, 2)}%` as unknown as number,
-                      backgroundColor: isToday ? color : color + 'BB',
+                      backgroundColor: isToday ? colors.primary : colors.cardAlt,
                       borderRadius: barWidth > 10 ? 4 : 2,
                     },
                   ]}
@@ -68,7 +58,6 @@ function BarChart({
           })}
         </View>
       </View>
-      {/* X-axis labels — show every Nth */}
       <View style={barStyles.xLabels}>
         {labels.map((label, i) => {
           const showEvery = data.length <= 7 ? 1 : data.length <= 14 ? 2 : 5;
@@ -76,7 +65,7 @@ function BarChart({
             return <View key={i} style={{ flex: 1 }} />;
           }
           return (
-            <Text key={i} style={[barStyles.xLabel, { width: barWidth + 3 }]} numberOfLines={1}>
+            <Text key={i} style={[barStyles.xLabel, { width: barWidth + 3, color: colors.textMuted }]} numberOfLines={1}>
               {label}
             </Text>
           );
@@ -87,34 +76,29 @@ function BarChart({
 }
 
 const barStyles = StyleSheet.create({
-  container: { width: CHART_WIDTH, height: 180 },
+  container: { width: CHART_WIDTH, height: 160 },
   chartArea: { flex: 1, position: 'relative', paddingHorizontal: 0 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', height: '100%', gap: 3 },
   barWrapper: { alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
   bar: { width: '100%' },
-  goalLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1.5,
-    backgroundColor: '#EF4444',
-    zIndex: 10,
-  },
-  xLabels: { flexDirection: 'row', marginTop: 4, gap: 3 },
-  xLabel: { fontSize: 9, color: '#9CA3AF', textAlign: 'center', overflow: 'hidden' },
+  xLabels: { flexDirection: 'row', marginTop: 8, gap: 3 },
+  xLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center', overflow: 'hidden' },
 });
 
 // ─── Heatmap ───────────────────────────────────────────────────────────────
 
-const INTENSITY_COLORS = ['#F3F4F6', '#C4BFFF', '#9D95FF', '#7B72FF', '#6C63FF'];
 const DAY_LABELS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 
-function MonthHeatmap({ points, year, month }: { points: HeatmapPoint[]; year: number; month: number }) {
+function getIntensityColors(colors: ThemeColors): string[] {
+  return [colors.cardAlt, colors.primaryLight, colors.primary + '88', colors.primary + 'CC', colors.primary];
+}
+
+function MonthHeatmap({ points, year, month, colors }: { points: HeatmapPoint[]; year: number; month: number; colors: ThemeColors }) {
   const pointMap = new Map(points.map((p) => [p.date, p]));
+  const intensityColors = getIntensityColors(colors);
 
   const firstDay = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
-  // ISO week: Monday=0
   const startOffset = (firstDay.getDay() + 6) % 7;
 
   const cells: (HeatmapPoint | null)[] = Array(startOffset).fill(null);
@@ -127,13 +111,11 @@ function MonthHeatmap({ points, year, month }: { points: HeatmapPoint[]; year: n
 
   return (
     <View>
-      {/* Day headers */}
       <View style={heatStyles.row}>
         {DAY_LABELS.map((d) => (
-          <Text key={d} style={[heatStyles.dayLabel, { width: cellSize }]}>{d}</Text>
+          <Text key={d} style={[heatStyles.dayLabel, { width: cellSize, color: colors.textMuted }]}>{d}</Text>
         ))}
       </View>
-      {/* Grid */}
       {Array.from({ length: Math.ceil(cells.length / 7) }).map((_, week) => (
         <View key={week} style={heatStyles.row}>
           {cells.slice(week * 7, week * 7 + 7).map((cell, di) => (
@@ -144,7 +126,7 @@ function MonthHeatmap({ points, year, month }: { points: HeatmapPoint[]; year: n
                 {
                   width: cellSize,
                   height: cellSize,
-                  backgroundColor: cell ? INTENSITY_COLORS[cell.intensity] : 'transparent',
+                  backgroundColor: cell ? intensityColors[cell.intensity] : 'transparent',
                 },
               ]}
             />
@@ -157,18 +139,35 @@ function MonthHeatmap({ points, year, month }: { points: HeatmapPoint[]; year: n
 
 const heatStyles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 4, marginBottom: 4 },
-  dayLabel: { fontSize: 10, color: '#9CA3AF', textAlign: 'center' },
+  dayLabel: { fontSize: 10, textAlign: 'center' },
   cell: { borderRadius: 4 },
 });
 
 // ─── Record Card ───────────────────────────────────────────────────────────
 
-function RecordCard({ label, value, sub, color = '#6C63FF' }: { label: string; value: string; sub?: string; color?: string }) {
+function RecordCard({
+  icon,
+  label,
+  value,
+  sub,
+  iconBg,
+  colors,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  sub?: string;
+  iconBg: string;
+  colors: ThemeColors;
+}) {
   return (
-    <View style={[recStyles.card, { borderTopColor: color }]}>
-      <Text style={[recStyles.value, { color }]}>{value}</Text>
-      <Text style={recStyles.label}>{label}</Text>
-      {sub && <Text style={recStyles.sub}>{sub}</Text>}
+    <View style={[recStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[recStyles.iconCircle, { backgroundColor: iconBg }]}>
+        <Text style={recStyles.iconText}>{icon}</Text>
+      </View>
+      <Text style={[recStyles.label, { color: colors.textMuted }]}>{label}</Text>
+      <Text style={[recStyles.value, { color: colors.text }]}>{value}</Text>
+      {sub && <Text style={[recStyles.sub, { color: colors.textMuted }]}>{sub}</Text>}
     </View>
   );
 }
@@ -176,24 +175,28 @@ function RecordCard({ label, value, sub, color = '#6C63FF' }: { label: string; v
 const recStyles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
+    borderWidth: 1,
     padding: 14,
-    borderTopWidth: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  value: { fontSize: 22, fontWeight: '800' },
-  label: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  sub:   { fontSize: 10, color: '#9CA3AF', marginTop: 1 },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  iconText: { fontSize: 16 },
+  value: { fontSize: 20, fontWeight: '800' },
+  label: { fontSize: 12, marginTop: 2 },
+  sub: { fontSize: 10, marginTop: 1 },
 });
 
 // ─── Main Stats Screen ─────────────────────────────────────────────────────
 
 const MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const PERIOD_LABELS: Record<ChartPeriod, string> = { week: 'Bu Hafta', month: 'Bu Ay', '12weeks': 'Son 12 Hafta' };
 
 function formatShortDate(dateStr: string, period: ChartPeriod): string {
   const d = new Date(dateStr);
@@ -203,6 +206,7 @@ function formatShortDate(dateStr: string, period: ChartPeriod): string {
 }
 
 export default function StatsScreen() {
+  const { colors } = useTheme();
   const [period, setPeriod] = useState<ChartPeriod>('week');
   const [chartData, setChartData] = useState<DailyPoint[] | WeeklyPoint[]>([]);
   const [records, setRecords] = useState<PersonalRecords | null>(null);
@@ -239,7 +243,6 @@ export default function StatsScreen() {
     setRefreshing(false);
   }
 
-  // Build chart values and labels
   const isDailyData = period !== '12weeks';
   const values = isDailyData
     ? (chartData as DailyPoint[]).map((d) => d.steps)
@@ -264,173 +267,161 @@ export default function StatsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />}
-      >
-        <Text style={styles.title}>İstatistikler</Text>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
+        <AppHeader />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        >
+          <Text style={[styles.title, { color: colors.text }]}>İstatistiklerin</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            Performans detayların ve gelişim sürecin.
+          </Text>
 
-        {/* ── Kişisel Rekörler ── */}
-        {records && (
-          <>
-            <Text style={styles.sectionTitle}>🏅 Kişisel Rekörler</Text>
-            <View style={styles.recordsGrid}>
-              <RecordCard
-                label="Günlük Rekör"
-                value={records.best_day_steps.toLocaleString()}
-                sub={records.best_day_date ?? undefined}
-                color="#6C63FF"
-              />
-              <RecordCard
-                label="Mevcut Seri"
-                value={`${records.current_streak} gün`}
-                color="#EF4444"
-              />
-            </View>
-            <View style={[styles.recordsGrid, { marginTop: 8 }]}>
-              <RecordCard
-                label="En Uzun Seri"
-                value={`${records.longest_streak} gün`}
-                color="#F59E0B"
-              />
-              <RecordCard
-                label="30 Günlük Ort."
-                value={records.avg_daily_steps_30d.toLocaleString()}
-                sub="adım/gün"
-                color="#10B981"
-              />
-            </View>
-            <View style={[styles.recordsGrid, { marginTop: 8 }]}>
-              <RecordCard
-                label="Toplam Adım"
-                value={records.total_steps_all_time >= 1000
-                  ? `${(records.total_steps_all_time / 1000).toFixed(1)}B`
-                  : String(records.total_steps_all_time)}
-                sub="tüm zamanlar"
-                color="#8B5CF6"
-              />
-              <RecordCard
-                label="Aktif Gün"
-                value={String(records.active_days_total)}
-                sub="toplam"
-                color="#3B82F6"
-              />
-            </View>
-          </>
-        )}
-
-        {/* ── Adım Grafiği ── */}
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>📊 Adım Grafiği</Text>
-        <View style={styles.periodToggle}>
-          {(['week','month','12weeks'] as ChartPeriod[]).map((p) => (
-            <TouchableOpacity
-              key={p}
-              style={[styles.periodBtn, period === p && styles.activePeriodBtn]}
-              onPress={() => setPeriod(p)}
-            >
-              <Text style={[styles.periodText, period === p && styles.activePeriodText]}>
-                {p === 'week' ? '7 Gün' : p === 'month' ? '30 Gün' : '12 Hafta'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.chartCard}>
-          <View style={styles.chartMeta}>
-            <View>
-              <Text style={styles.chartTotal}>{totalInPeriod.toLocaleString()}</Text>
-              <Text style={styles.chartTotalLabel}>
-                {period === '12weeks' ? 'toplam adım (12 hafta)' : `toplam adım (${period === 'week' ? '7' : '30'} gün)`}
-              </Text>
-            </View>
-            <View style={styles.chartAvg}>
-              <Text style={styles.chartAvgValue}>{avgInPeriod.toLocaleString()}</Text>
-              <Text style={styles.chartAvgLabel}>günlük ort.</Text>
-            </View>
-          </View>
-
-          {values.length > 0 ? (
-            <BarChart
-              data={values}
-              labels={labels}
-              color="#6C63FF"
-              goal={10000}
-            />
-          ) : (
-            <View style={styles.noData}>
-              <Text style={styles.noDataText}>Henüz veri yok</Text>
-            </View>
+          {/* ── Kişisel Rekörler ── */}
+          {records && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>KİŞİSEL REKORLAR</Text>
+              <View style={styles.recordsGrid}>
+                <RecordCard
+                  icon="🏃" iconBg={colors.primaryLight}
+                  label="En Yüksek Gün" value={records.best_day_steps.toLocaleString('tr-TR')}
+                  sub={records.best_day_date ?? undefined} colors={colors}
+                />
+                <RecordCard
+                  icon="🔥" iconBg="rgba(239,68,68,0.18)"
+                  label="En Uzun Seri" value={`${records.longest_streak} Gün`}
+                  colors={colors}
+                />
+              </View>
+              <View style={[styles.recordsGrid, { marginTop: 10 }]}>
+                <RecordCard
+                  icon="⚡" iconBg="rgba(245,158,11,0.18)"
+                  label="Mevcut Seri" value={`${records.current_streak} Gün`}
+                  colors={colors}
+                />
+                <RecordCard
+                  icon="📊" iconBg="rgba(16,185,129,0.18)"
+                  label="30 Günlük Ort." value={records.avg_daily_steps_30d.toLocaleString('tr-TR')} sub="adım/gün"
+                  colors={colors}
+                />
+              </View>
+              <View style={[styles.recordsGrid, { marginTop: 10 }]}>
+                <RecordCard
+                  icon="👟" iconBg="rgba(139,92,246,0.18)"
+                  label="Toplam Adım"
+                  value={records.total_steps_all_time >= 1000
+                    ? `${(records.total_steps_all_time / 1000).toFixed(1)}B`
+                    : String(records.total_steps_all_time)}
+                  sub="tüm zamanlar" colors={colors}
+                />
+                <RecordCard
+                  icon="✅" iconBg="rgba(59,130,246,0.18)"
+                  label="Aktif Gün" value={String(records.active_days_total)} sub="toplam"
+                  colors={colors}
+                />
+              </View>
+            </>
           )}
 
-          <View style={styles.legendRow}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#6C63FF' }]} />
-              <Text style={styles.legendLabel}>Adım</Text>
+          {/* ── Adım Grafiği ── */}
+          <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 24 }]}>
+            <View style={styles.chartCardHeader}>
+              <Text style={[styles.chartCardTitle, { color: colors.text }]}>Haftalık Aktivite</Text>
+              <TouchableOpacity
+                onPress={() => setPeriod((p) => (p === 'week' ? 'month' : p === 'month' ? '12weeks' : 'week'))}
+                style={[styles.periodPill, { backgroundColor: colors.primaryLight }]}
+              >
+                <Text style={[styles.periodPillText, { color: colors.primary }]}>{PERIOD_LABELS[period]}</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.legendLabel}>10.000 hedef</Text>
+
+            <View style={styles.chartMeta}>
+              <View>
+                <Text style={[styles.chartTotal, { color: colors.primary }]}>{totalInPeriod.toLocaleString('tr-TR')}</Text>
+                <Text style={[styles.chartTotalLabel, { color: colors.textMuted }]}>toplam adım</Text>
+              </View>
+              <View style={styles.chartAvg}>
+                <Text style={[styles.chartAvgValue, { color: colors.textSecondary }]}>{avgInPeriod.toLocaleString('tr-TR')}</Text>
+                <Text style={[styles.chartAvgLabel, { color: colors.textMuted }]}>günlük ort.</Text>
+              </View>
+            </View>
+
+            {values.length > 0 ? (
+              <BarChart data={values} labels={labels} colors={colors} />
+            ) : (
+              <View style={styles.noData}>
+                <Text style={[styles.noDataText, { color: colors.textMuted }]}>Henüz veri yok</Text>
+              </View>
+            )}
+          </View>
+
+          {/* ── Aylık Heatmap ── */}
+          <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 16 }]}>
+            <View style={styles.chartCardHeader}>
+              <Text style={[styles.chartCardTitle, { color: colors.text }]}>Aktivite Haritası</Text>
+              <Text style={[styles.chartCardHint, { color: colors.textMuted }]}>Son 3 Ay</Text>
+            </View>
+
+            <View style={styles.heatmapNav}>
+              <TouchableOpacity
+                onPress={prevMonth}
+                style={styles.navBtn}
+                accessibilityLabel="Önceki ay"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.navBtnText, { color: colors.primary }]}>‹</Text>
+              </TouchableOpacity>
+              <Text style={[styles.heatmapMonth, { color: colors.text }]}>
+                {MONTHS_TR[heatMonth - 1]} {heatYear}
+              </Text>
+              <TouchableOpacity
+                onPress={nextMonth}
+                style={styles.navBtn}
+                accessibilityLabel="Sonraki ay"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.navBtnText, { color: colors.primary }]}>›</Text>
+              </TouchableOpacity>
+            </View>
+
+            <MonthHeatmap points={heatmap} year={heatYear} month={heatMonth} colors={colors} />
+
+            <View style={styles.heatmapLegend}>
+              <Text style={[styles.legendLabel, { color: colors.textMuted }]}>Az</Text>
+              {getIntensityColors(colors).map((c, i) => (
+                <View key={i} style={[styles.heatLegendCell, { backgroundColor: c }]} />
+              ))}
+              <Text style={[styles.legendLabel, { color: colors.textMuted }]}>Çok</Text>
             </View>
           </View>
-        </View>
 
-        {/* ── Aylık Heatmap ── */}
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>📅 Aktivite Haritası</Text>
-        <View style={styles.chartCard}>
-          <View style={styles.heatmapNav}>
-            <TouchableOpacity
-              onPress={prevMonth}
-              style={styles.navBtn}
-              accessibilityLabel="Önceki ay"
-              accessibilityRole="button"
-            >
-              <Text style={styles.navBtnText}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.heatmapMonth}>
-              {MONTHS_TR[heatMonth - 1]} {heatYear}
-            </Text>
-            <TouchableOpacity
-              onPress={nextMonth}
-              style={styles.navBtn}
-              accessibilityLabel="Sonraki ay"
-              accessibilityRole="button"
-            >
-              <Text style={styles.navBtnText}>›</Text>
-            </TouchableOpacity>
-          </View>
-
-          <MonthHeatmap points={heatmap} year={heatYear} month={heatMonth} />
-
-          <View style={styles.heatmapLegend}>
-            <Text style={styles.legendLabel}>Az</Text>
-            {INTENSITY_COLORS.map((c, i) => (
-              <View key={i} style={[styles.heatLegendCell, { backgroundColor: c }]} />
-            ))}
-            <Text style={styles.legendLabel}>Çok</Text>
-          </View>
-        </View>
-
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7FF' },
+  container: { flex: 1 },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#1A1A2E',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 4,
+    paddingTop: 8,
+  },
+  subtitle: {
+    fontSize: 13,
+    paddingHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#1A1A2E',
+    letterSpacing: 0.5,
     paddingHorizontal: 20,
     marginBottom: 10,
   },
@@ -439,51 +430,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 10,
   },
-  periodToggle: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 10,
-    backgroundColor: '#E8E6FF',
-    borderRadius: 12,
-    padding: 3,
-  },
-  periodBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  activePeriodBtn: { backgroundColor: '#FFFFFF' },
-  periodText: { fontSize: 12, fontWeight: '600', color: '#9CA3AF' },
-  activePeriodText: { color: '#6C63FF' },
   chartCard: {
-    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 1,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
+  chartCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  chartCardTitle: { fontSize: 16, fontWeight: '700' },
+  chartCardHint: { fontSize: 12, fontWeight: '600' },
+  periodPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  periodPillText: { fontSize: 12, fontWeight: '700' },
   chartMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     marginBottom: 16,
   },
-  chartTotal: { fontSize: 26, fontWeight: '800', color: '#6C63FF' },
-  chartTotalLabel: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  chartTotal: { fontSize: 24, fontWeight: '800' },
+  chartTotalLabel: { fontSize: 11, marginTop: 2 },
   chartAvg: { alignItems: 'flex-end' },
-  chartAvgValue: { fontSize: 18, fontWeight: '700', color: '#374151' },
-  chartAvgLabel: { fontSize: 11, color: '#9CA3AF' },
-  legendRow: { flexDirection: 'row', gap: 16, marginTop: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { fontSize: 11, color: '#9CA3AF' },
-  noData: { height: 150, justifyContent: 'center', alignItems: 'center' },
-  noDataText: { color: '#9CA3AF', fontSize: 14 },
+  chartAvgValue: { fontSize: 17, fontWeight: '700' },
+  chartAvgLabel: { fontSize: 11 },
+  noData: { height: 140, justifyContent: 'center', alignItems: 'center' },
+  noDataText: { fontSize: 14 },
   heatmapNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -491,8 +470,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   navBtn: { padding: 6 },
-  navBtnText: { fontSize: 22, color: '#6C63FF', fontWeight: '700' },
-  heatmapMonth: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
+  navBtnText: { fontSize: 22, fontWeight: '700' },
+  heatmapMonth: { fontSize: 15, fontWeight: '700' },
   heatmapLegend: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -500,5 +479,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     justifyContent: 'flex-end',
   },
+  legendLabel: { fontSize: 11 },
   heatLegendCell: { width: 12, height: 12, borderRadius: 2 },
 });

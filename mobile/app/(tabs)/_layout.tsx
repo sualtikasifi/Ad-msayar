@@ -1,29 +1,39 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({ emoji, focused, label }: { emoji: string; focused: boolean; label: string }) {
+  const { colors, isDark } = useTheme();
   return (
-    <Text style={{ fontSize: focused ? 26 : 22, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>
+    <View style={[styles.iconWrap, focused && { backgroundColor: colors.primaryLight }]}>
+      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>{emoji}</Text>
+      <Text
+        style={[
+          styles.label,
+          { color: focused ? colors.primary : colors.textMuted, opacity: focused || !isDark ? 1 : 0.8 },
+        ]}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
         tabBarStyle: {
           backgroundColor: colors.tabBar,
-          borderTopWidth: 1,
+          borderTopWidth: isDark ? 0 : 1,
           borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 68,
+          paddingBottom: 10,
+          paddingTop: 8,
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarShowLabel: false,
         headerShown: false,
       }}
     >
@@ -31,30 +41,46 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Ana Sayfa',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👟" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👟" focused={focused} label="Ev" />,
         }}
       />
       <Tabs.Screen
         name="friends"
         options={{
           title: 'Arkadaşlar',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👥" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👥" focused={focused} label="Arkadaşlar" />,
         }}
       />
       <Tabs.Screen
         name="leaderboard"
         options={{
           title: 'Sıralama',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} label="Sıralama" />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: 'İstatistik',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📈" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📈" focused={focused} label="İstatistik" />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 2,
+    minWidth: 64,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});

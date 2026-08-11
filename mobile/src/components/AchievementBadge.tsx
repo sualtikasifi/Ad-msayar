@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { Achievement } from '../api/achievements';
+import { useTheme } from '@/context/ThemeContext';
 
 interface AchievementBadgeProps {
   achievement: Achievement;
@@ -16,7 +17,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function AchievementBadge({ achievement, size = 'md', onPress }: AchievementBadgeProps) {
-  const color = CATEGORY_COLORS[achievement.category] || '#9CA3AF';
+  const { colors } = useTheme();
+  const color = CATEGORY_COLORS[achievement.category] || colors.textMuted;
   const locked = !achievement.earned;
 
   const sizeConfig = {
@@ -38,8 +40,8 @@ export function AchievementBadge({ achievement, size = 'md', onPress }: Achievem
             width: sizeConfig.container,
             height: sizeConfig.container,
             borderRadius: sizeConfig.container / 2,
-            borderColor: locked ? '#E5E7EB' : color,
-            backgroundColor: locked ? '#F9FAFB' : color + '18',
+            borderColor: locked ? colors.border : color,
+            backgroundColor: locked ? colors.cardAlt : color + '22',
           },
         ]}
       >
@@ -49,7 +51,7 @@ export function AchievementBadge({ achievement, size = 'md', onPress }: Achievem
         {locked && <View style={styles.lockOverlay}><Text style={styles.lockIcon}>🔒</Text></View>}
       </View>
       <Text
-        style={[styles.name, { fontSize: sizeConfig.name, color: locked ? '#9CA3AF' : '#374151' }]}
+        style={[styles.name, { fontSize: sizeConfig.name, color: locked ? colors.textMuted : colors.textSecondary }]}
         numberOfLines={2}
       >
         {achievement.name}

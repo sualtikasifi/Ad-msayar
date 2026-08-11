@@ -1,25 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { Challenge } from '../types';
+import { useTheme } from '@/context/ThemeContext';
 
 interface ChallengeCardProps {
   challenge: Challenge;
   onPress: () => void;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#F59E0B',
-  active: '#10B981',
-  completed: '#6C63FF',
-  cancelled: '#EF4444',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Bekliyor',
-  active: 'Aktif',
-  completed: 'Tamamlandı',
-  cancelled: 'İptal',
-};
 
 function getDaysLeft(endDate: string): string {
   const end = new Date(endDate);
@@ -30,38 +18,84 @@ function getDaysLeft(endDate: string): string {
   return `${diff} gün kaldı`;
 }
 
+function getTimeProgress(startDate: string, endDate: string): number {
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+  if (end <= start) return 0;
+  return Math.min(Math.max((now - start) / (end - start), 0), 1);
+}
+
 export function ChallengeCard({ challenge, onPress }: ChallengeCardProps) {
-  const statusColor = STATUS_COLORS[challenge.status] || '#9CA3AF';
-  const statusLabel = STATUS_LABELS[challenge.status] || challenge.status;
+  const { colors } = useTheme();
+  const isLeader = challenge.status === 'active' && challenge.my_rank === 1;
+  const isWinner = challenge.status === 'completed' && challenge.my_rank === 1;
+
+  let statusLabel = 'Bekliyor';
+  let statusColor = colors.warning;
+  if (challenge.status === 'active') {
+    statusLabel = isLeader ? 'Lider: Sen' : 'Devam Ediyor';
+    statusColor = isLeader ? colors.primary : colors.accent;
+  } else if (challenge.status === 'completed') {
+    statusLabel = isWinner ? 'Kazandın!' : 'Tamamlandı';
+    statusColor = isWinner ? colors.success : colors.textMuted;
+  } else if (challenge.status === 'cancelled') {
+    statusLabel = 'İptal';
+    statusColor = colors.danger;
+  }
+
+  const hasGoalProgress = challenge.status === 'active' && !!challenge.step_goal;
+  const progress = hasGoalProgress
+    ? Math.min((challenge.my_steps ?? 0) / (challenge.step_goal as number), 1)
+    : getTimeProgress(challenge.start_date, challenge.end_date);
+  const progressLabel = hasGoalProgress
+    ? `%${Math.round(progress * 100)}`
+    : challenge.my_steps !== undefined
+      ? `${challenge.my_steps.toLocaleString('tr-TR')} adım`
+      : getDaysLeft(challenge.end_date);
+
+  const icon = challenge.type === '1v1' ? '⚔️' : '👥';
+  const iconBg = challenge.type === '1v1' ? 'rgba(239,68,68,0.18)' : 'rgba(59,130,246,0.18)';
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={1}>
-          {challenge.title || (challenge.type === '1v1' ? '1v1 Challenge' : 'Grup Challenge')}
-        </Text>
-        <View style={[styles.badge, { backgroundColor: statusColor + '22' }]}>
-          <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+        <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+          <Text style={styles.iconText}>{icon}</Text>
+        </View>
+        <View style={styles.titleBlock}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+            {challenge.title || (challenge.type === '1v1' ? '1v1 Challenge' : 'Grup Challenge')}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            {challenge.type === '1v1' ? '1v1' : 'Grup'}
+          </Text>
+        </View>
+        <View style={[styles.badge, { backgroundColor: statusColor + '26' }]}>
+          <Text style={[styles.badgeText, { color: statusColor }]} numberOfLines={1}>
+            {statusLabel}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.meta}>
-        <Text style={styles.dates}>
-          {challenge.start_date} → {challenge.end_date}
-        </Text>
-        {challenge.status === 'active' && (
-          <Text style={styles.daysLeft}>{getDaysLeft(challenge.end_date)}</Text>
-        )}
-      </View>
-
-      {challenge.my_steps !== undefined && (
-        <View style={styles.footer}>
-          <Text style={styles.mySteps}>
-            Senin adımların: <Text style={styles.stepValue}>{challenge.my_steps?.toLocaleString()}</Text>
-          </Text>
-          {challenge.my_rank && (
-            <Text style={styles.rank}>#{challenge.my_rank}</Text>
-          )}
+      {challenge.status === 'active' && (
+        <View style={styles.progressBlock}>
+          <View style={styles.progressRow}>
+            <Text style={[styles.progressLabel, { color: colors.textMuted }]}>İlerleme</Text>
+            <Text style={[styles.progressValue, { color: colors.text }]}>{progressLabel}</Text>
+          </View>
+          <View style={[styles.track, { backgroundColor: colors.cardAlt }]}>
+            <LinearGradient
+              colors={[colors.primary, colors.accent]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.fill, { width: `${Math.max(progress * 100, 4)}%` }]}
+            />
+          </View>
         </View>
       )}
     </TouchableOpacity>
@@ -70,72 +104,71 @@ export function ChallengeCard({ challenge, onPress }: ChallengeCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
+    borderWidth: 1,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A2E',
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  iconText: {
+    fontSize: 18,
+  },
+  titleBlock: {
     flex: 1,
     marginRight: 8,
   },
+  title: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    maxWidth: 110,
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
-  },
-  meta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dates: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  daysLeft: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '500',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  mySteps: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  stepValue: {
-    color: '#6C63FF',
-    fontWeight: '600',
-  },
-  rank: {
-    fontSize: 16,
     fontWeight: '700',
-    color: '#6C63FF',
+  },
+  progressBlock: {
+    marginTop: 14,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    fontSize: 12,
+  },
+  progressValue: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  track: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 3,
   },
 });

@@ -6,6 +6,8 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 
 export interface ThemeColors {
   bg: string;
+  bgGradientTop: string;
+  bgGradientBottom: string;
   card: string;
   cardAlt: string;
   border: string;
@@ -14,14 +16,24 @@ export interface ThemeColors {
   textMuted: string;
   primary: string;
   primaryLight: string;
+  accent: string;
   success: string;
   warning: string;
   danger: string;
   tabBar: string;
+  glow: string;
 }
+
+export const MEDAL_COLORS = {
+  gold: '#F5C542',
+  silver: '#C0C6D4',
+  bronze: '#D08A4E',
+};
 
 const LIGHT: ThemeColors = {
   bg: '#F8F7FF',
+  bgGradientTop: '#F8F7FF',
+  bgGradientBottom: '#F8F7FF',
   card: '#FFFFFF',
   cardAlt: '#F3F4F6',
   border: '#E5E7EB',
@@ -30,26 +42,32 @@ const LIGHT: ThemeColors = {
   textMuted: '#9CA3AF',
   primary: '#6C63FF',
   primaryLight: '#E8E6FF',
+  accent: '#0EA5B7',
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',
   tabBar: '#FFFFFF',
+  glow: '#6C63FF',
 };
 
 const DARK: ThemeColors = {
-  bg: '#0F0F1A',
-  card: '#1A1A2E',
-  cardAlt: '#252540',
-  border: '#2D2D4E',
-  text: '#F9FAFB',
-  textSecondary: '#D1D5DB',
-  textMuted: '#6B7280',
-  primary: '#8B83FF',
-  primaryLight: '#2D2A5A',
+  bg: '#0D0B1F',
+  bgGradientTop: '#1C1440',
+  bgGradientBottom: '#0A0817',
+  card: '#1A1730',
+  cardAlt: '#221D45',
+  border: 'rgba(255,255,255,0.08)',
+  text: '#F5F3FF',
+  textSecondary: '#C9C5E0',
+  textMuted: '#8B87A8',
+  primary: '#8B5CF6',
+  primaryLight: '#2D2560',
+  accent: '#22D3EE',
   success: '#34D399',
   warning: '#FBBF24',
   danger: '#F87171',
-  tabBar: '#1A1A2E',
+  tabBar: 'rgba(17,14,36,0.96)',
+  glow: '#8B5CF6',
 };
 
 interface ThemeContextValue {
