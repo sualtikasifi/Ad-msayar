@@ -34,7 +34,7 @@ interface PedometerState {
  * displayed total — this avoids overwriting the server with a lower value.
  */
 export function usePedometer(): PedometerState {
-  const { todaySteps, setTodaySteps, syncToServer } = useStepsStore();
+  const { todaySteps, setTodaySteps, syncToServer, loadTodayFromServer } = useStepsStore();
   const [isAvailable, setIsAvailable] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [debugInfo, setDebugInfo] = useState<PedometerDebugInfo>({
@@ -95,7 +95,19 @@ export function usePedometer(): PedometerState {
         setDebugInfo((d) => ({ ...d, permission: 'error', lastError: `permissions: ${String(err)}` }));
       }
 
-      // 2) iOS only: seed today's total from the historical query. On Android
+      // 2) Hydrate today's authoritative total from the server BEFORE anchoring
+      //    the live stream. Without this, watchStepCount's first event can
+      //    capture a stale (e.g. 0) baseline while a concurrent server load
+      //    resolves later with a higher value — every subsequent live delta
+      //    then gets clamped below that higher value and the display freezes.
+      try {
+        await loadTodayFromServer();
+      } catch {
+        /* offline or first run — keep whatever is already in the store. */
+      }
+      if (cancelled) return;
+
+      // 3) iOS only: seed today's total from the historical query. On Android
       //    this throws, so we keep whatever is already in the store (server value).
       try {
         const midnight = new Date();
@@ -108,7 +120,7 @@ export function usePedometer(): PedometerState {
         /* Android: historical queries unsupported — rely on the live stream. */
       }
 
-      // 3) Live updates. The stream reports steps since it began, so we anchor it
+      // 4) Live updates. The stream reports steps since it began, so we anchor it
       //    to the count already known for today and only ever grow the total.
       subscription = Pedometer.watchStepCount((result) => {
         setDebugInfo((d) => ({ ...d, watchEventCount: d.watchEventCount + 1, lastRawSteps: result.steps }));
@@ -124,7 +136,7 @@ export function usePedometer(): PedometerState {
         scheduledSync(safeCount);
       });
 
-      // 4) Periodic forced sync. iOS can re-query an accurate absolute total;
+      // 5) Periodic forced sync. iOS can re-query an accurate absolute total;
       //    Android just re-syncs the latest known value.
       intervalRef.current = setInterval(async () => {
         try {
@@ -147,7 +159,7 @@ export function usePedometer(): PedometerState {
       if (pendingSyncRef.current) clearTimeout(pendingSyncRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [setTodaySteps, scheduledSync, syncToServer]);
+  }, [setTodaySteps, scheduledSync, syncToServer, loadTodayFromServer]);
 
   return { todaySteps, isAvailable, permissionGranted, debugInfo };
 }
