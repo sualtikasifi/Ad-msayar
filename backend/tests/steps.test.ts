@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { pool } from '../src/config/database';
+import { todayInAppTimezone } from '../src/utils/date';
 
 const app = createApp();
 
@@ -38,7 +39,7 @@ describe('steps', () => {
 
   it('syncs steps and reflects the value in today totals', async () => {
     const token = await registerAndLogin();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInAppTimezone();
 
     const sync = await request(app)
       .post('/api/v1/steps/sync')
@@ -56,7 +57,7 @@ describe('steps', () => {
 
   it('does not let a lower re-sync overwrite a higher step count for the day', async () => {
     const token = await registerAndLogin();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInAppTimezone();
 
     await request(app)
       .post('/api/v1/steps/sync')
