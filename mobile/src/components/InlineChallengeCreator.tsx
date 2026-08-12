@@ -18,7 +18,7 @@ const MODES: { mode: ChallengeMode; emoji: string; label: string; forcedType?: C
 
 interface InlineChallengeCreatorProps {
   onCreated: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
 
 export function InlineChallengeCreator({ onCreated, onCancel }: InlineChallengeCreatorProps) {
@@ -101,12 +101,13 @@ export function InlineChallengeCreator({ onCreated, onCancel }: InlineChallengeC
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: colors.text }]}>Yeni Challenge</Text>
-        <TouchableOpacity onPress={onCancel} accessibilityLabel="Kapat" accessibilityRole="button">
-          <Text style={[styles.closeBtn, { color: colors.textMuted }]}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      {onCancel && (
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={onCancel} accessibilityLabel="Kapat" accessibilityRole="button">
+            <Text style={[styles.closeBtn, { color: colors.textMuted }]}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Mode */}
       <View style={styles.modeRow}>
@@ -221,8 +222,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
   },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  title: { fontSize: 16, fontWeight: '700' },
+  headerRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 4 },
   closeBtn: { fontSize: 16, fontWeight: '700', padding: 4 },
   modeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   modeChip: { flex: 1, borderRadius: 12, borderWidth: 1.5, paddingVertical: 10, alignItems: 'center' },

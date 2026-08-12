@@ -29,9 +29,17 @@ export const useStepsStore = create<StepsState>((set) => ({
 
   reset: () => set({ todaySteps: 0, lastSyncedAt: null }),
 
+  // Monotonic within a day: some Android devices/OS versions don't actually
+  // throw on the "iOS only" Pedometer.getStepCountAsync historical query (see
+  // usePedometer's seed step), which previously could silently overwrite a
+  // correct, higher live step count with a smaller one. Callers that need to
+  // reset for a new day must use `reset()`, not this setter.
   setTodaySteps: (count) => {
-    set({ todaySteps: count });
-    persistCache(count);
+    set((state) => {
+      const next = Math.max(count, state.todaySteps);
+      persistCache(next);
+      return { todaySteps: next };
+    });
   },
 
   setTracking: (tracking) => set({ isTracking: tracking }),

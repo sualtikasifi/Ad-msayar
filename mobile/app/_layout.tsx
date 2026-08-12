@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { useAuthStore } from '@/store/authStore';
 import { useAchievementStore } from '@/store/achievementStore';
 import { useStepsStore } from '@/store/stepsStore';
+import { useFriendStore } from '@/store/friendStore';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socketService';
 import { registerBackgroundTask } from '@/services/backgroundSteps';
 import {
@@ -68,6 +69,10 @@ export default function RootLayout() {
 
     registerBackgroundTask().catch(console.error);
 
+    // Load pending friend requests early so the header's notification badge
+    // is accurate even before the user visits the Friends tab.
+    useFriendStore.getState().loadPendingRequests().catch(console.error);
+
     // Register push notifications and handle tap-navigation
     registerForPushNotifications().catch(console.error);
 
@@ -113,6 +118,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="challenge" />
               <Stack.Screen name="profile" />
+              <Stack.Screen name="notifications" />
             </Stack>
             {/* Global achievement toast — renders above all screens */}
             <AchievementToastManager />

@@ -40,7 +40,6 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const [filter, setFilter] = React.useState<FilterType>('all');
-  const [showCreator, setShowCreator] = React.useState(false);
 
   const goal = user?.daily_step_goal ?? 10000;
   const percent = Math.min(Math.round((todaySteps / goal) * 100), 100);
@@ -123,25 +122,7 @@ export default function HomeScreen() {
 
           {/* Challenges */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>🏆 Challenge'lar</Text>
-              <TouchableOpacity
-                style={[styles.newButton, { backgroundColor: colors.cardAlt, borderColor: colors.primary }]}
-                onPress={() => setShowCreator((v) => !v)}
-              >
-                <Text style={[styles.newButtonText, { color: colors.primary }]}>{showCreator ? '✕ Kapat' : '+ Yeni'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {showCreator && (
-              <InlineChallengeCreator
-                onCreated={() => {
-                  setShowCreator(false);
-                  loadChallenges().catch(console.error);
-                }}
-                onCancel={() => setShowCreator(false)}
-              />
-            )}
+            <Text style={[styles.sectionTitle, { color: colors.text, paddingHorizontal: 20, marginBottom: 8 }]}>🏆 Challenge'lar</Text>
 
             <View style={styles.filterRow}>
               {FILTERS.map((f) => {
@@ -167,15 +148,9 @@ export default function HomeScreen() {
               <View style={styles.empty}>
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                   {filter === 'all'
-                    ? 'Henüz challenge yok.'
+                    ? 'Henüz challenge yok. Aşağıdan bir tane oluştur 👇'
                     : `${FILTERS.find((f) => f.value === filter)?.label} challenge yok.`}
                 </Text>
-                <TouchableOpacity
-                  style={[styles.createButton, { backgroundColor: colors.primary }]}
-                  onPress={() => setShowCreator(true)}
-                >
-                  <Text style={styles.createButtonText}>Challenge Oluştur</Text>
-                </TouchableOpacity>
               </View>
             ) : (
               filteredChallenges.map((c) => (
@@ -186,6 +161,9 @@ export default function HomeScreen() {
                 />
               ))
             )}
+
+            <Text style={[styles.sectionTitle, { color: colors.text, paddingHorizontal: 20, marginTop: 12, marginBottom: 0 }]}>+ Yeni Challenge</Text>
+            <InlineChallengeCreator onCreated={() => loadChallenges().catch(console.error)} />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -263,26 +241,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-  },
-  newButton: {
-    borderRadius: 10,
-    borderWidth: 1.5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  newButtonText: {
-    fontWeight: '700',
-    fontSize: 14,
   },
   filterRow: {
     flexDirection: 'row',
@@ -308,16 +269,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     marginBottom: 12,
-  },
-  createButton: {
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
   },
   guestBanner: {
     backgroundColor: '#6C63FF',
