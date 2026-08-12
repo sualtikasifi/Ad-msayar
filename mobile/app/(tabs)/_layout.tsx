@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@/context/ThemeContext';
 
 function TabIcon({ emoji, focused, label }: { emoji: string; focused: boolean; label: string }) {
@@ -13,12 +14,31 @@ function TabIcon({ emoji, focused, label }: { emoji: string; focused: boolean; l
           { color: focused ? colors.primary : colors.textMuted, opacity: focused || !isDark ? 1 : 0.8 },
         ]}
         numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.75}
       >
         {label}
       </Text>
     </View>
+  );
+}
+
+// A full-width pressable per tab (React Navigation's default tabBarIcon slot
+// can be narrower than the tab item itself, which was forcing longer labels
+// like "Arkadaşlar"/"İstatistik" to wrap onto a second line no matter how
+// small the font). This guarantees the label always has the full tab column
+// to lay out in.
+function TabButton({ children, style, onPress, onLongPress, accessibilityState, accessibilityLabel, testID }: BottomTabBarButtonProps) {
+  return (
+    <TouchableOpacity
+      onPress={onPress ?? undefined}
+      onLongPress={onLongPress ?? undefined}
+      accessibilityState={accessibilityState}
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+      style={[style as object, styles.tabButton]}
+      activeOpacity={0.7}
+    >
+      {children}
+    </TouchableOpacity>
   );
 }
 
@@ -37,6 +57,7 @@ export default function TabsLayout() {
           paddingTop: 8,
         },
         tabBarShowLabel: false,
+        tabBarButton: (props) => <TabButton {...props} />,
         headerShown: false,
       }}
     >
@@ -73,17 +94,20 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 6,
     borderRadius: 16,
     gap: 2,
-    width: '100%',
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     textAlign: 'center',
   },
