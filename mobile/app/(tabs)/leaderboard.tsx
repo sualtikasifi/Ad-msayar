@@ -288,8 +288,8 @@ function AchievementsSection({ colors }: { colors: ThemeColors }) {
               </View>
 
               {selectedAchievement.earned ? (
-                <View style={styles.earnedBanner}>
-                  <Text style={styles.earnedText}>
+                <View style={[styles.earnedBanner, { backgroundColor: colors.success + '22' }]}>
+                  <Text style={[styles.earnedText, { color: colors.success }]}>
                     ✓ Kazanıldı {selectedAchievement.earned_at
                       ? new Date(selectedAchievement.earned_at).toLocaleDateString('tr-TR')
                       : ''}
@@ -452,7 +452,6 @@ const styles = StyleSheet.create({
   xpPill: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
   xpPillText: { fontSize: 12, fontWeight: '700' },
   earnedBanner: {
-    backgroundColor: '#D1FAE5',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
