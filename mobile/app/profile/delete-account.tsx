@@ -26,9 +26,15 @@ export default function DeleteAccountScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Turkish-locale-aware comparison: plain .toUpperCase() maps lowercase "i"
+  // to a dotless "I" (the English rule), never to Turkish's dotted "İ" — so a
+  // user typing the natural word "sil" would never match a hardcoded 'SİL'
+  // and could get permanently stuck unable to confirm. Lowercasing with the
+  // Turkish locale avoids the ambiguity entirely.
+  const confirmMatches = confirmText.trim().toLocaleLowerCase('tr-TR') === 'sil';
   const confirmReady = isGuest
-    ? confirmText.trim().toUpperCase() === 'SİL'
-    : password.length > 0 && confirmText.trim().toUpperCase() === 'SİL';
+    ? confirmMatches
+    : password.length > 0 && confirmMatches;
 
   async function handleDelete() {
     setError('');
