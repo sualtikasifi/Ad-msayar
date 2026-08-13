@@ -37,7 +37,12 @@ export async function getDailyLeaderboard(userId: string): Promise<LeaderboardEn
 }
 
 export async function getWeeklyLeaderboard(userId: string): Promise<LeaderboardEntry[]> {
-  // ISO week: Monday to today
+  // ISO week: Monday to today. Anchor on the app's fixed UTC+3 "today"
+  // (matching todayInAppTimezone/getDailyLeaderboard above), not
+  // CURRENT_DATE (the DB server's typically-UTC date) — otherwise this
+  // window drifts a day relative to the daily leaderboard and to how
+  // daily_steps rows are bucketed during Turkey's evening hours.
+  const today = todayInAppTimezone();
   const { rows } = await pool.query(
     `WITH friends AS (
        SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END AS friend_id
@@ -55,11 +60,11 @@ export async function getWeeklyLeaderboard(userId: string): Promise<LeaderboardE
      FROM friends f
      JOIN users u ON u.id = f.friend_id
      LEFT JOIN daily_steps ds ON ds.user_id = u.id
-       AND ds.step_date >= date_trunc('week', CURRENT_DATE)
-       AND ds.step_date <= CURRENT_DATE
+       AND ds.step_date >= date_trunc('week', $2::date)
+       AND ds.step_date <= $2::date
      GROUP BY u.id, u.username, u.avatar_id
      ORDER BY rank ASC, u.username ASC`,
-    [userId]
+    [userId, today]
   );
   return rows;
 }
