@@ -6,6 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -34,7 +36,7 @@ const FILTERS: { label: string; value: FilterType }[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { todaySteps } = usePedometer();
+  const { todaySteps, isAvailable, permissionGranted, checked } = usePedometer();
   const { loadTodayFromServer } = useStepsStore();
   const { challenges, loadChallenges } = useChallengeStore();
   const { colors, isDark } = useTheme();
@@ -64,6 +66,32 @@ export default function HomeScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           showsVerticalScrollIndicator={false}
         >
+          {/* Pedometer permission/availability warning — otherwise steps silently
+              never count and the user has no way to know why. */}
+          {checked && (!isAvailable || !permissionGranted) && (
+            <TouchableOpacity
+              style={[styles.warningBanner, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}
+              onPress={() => Linking.openSettings().catch(() => {})}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.warningBannerIcon}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.warningBannerText, { color: colors.text }]}>
+                  {!isAvailable
+                    ? 'Bu cihazda adım sayar sensörü bulunamadı'
+                    : 'Adım sayma izni verilmedi'}
+                </Text>
+                {isAvailable && (
+                  <Text style={[styles.warningBannerCta, { color: colors.textMuted }]}>
+                    {Platform.OS === 'android'
+                      ? 'Adımlarının takip edilmesi için Ayarlar → İzinler → Fiziksel Aktivite\'yi aç'
+                      : 'Adımlarının takip edilmesi için Ayarlar → Hareket ve Uygunluk\'u aç'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+
           {/* Guest banner */}
           {user?.is_guest && (
             <TouchableOpacity
@@ -269,6 +297,28 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     marginBottom: 12,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  warningBannerIcon: {
+    fontSize: 20,
+  },
+  warningBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  warningBannerCta: {
+    fontSize: 12,
+    marginTop: 2,
   },
   guestBanner: {
     backgroundColor: '#6C63FF',

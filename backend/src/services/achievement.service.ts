@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { pool } from '../config/database';
 import * as pushService from './push.service';
+import { todayInAppTimezone } from '../utils/date';
 
 export interface Achievement {
   id: string;
@@ -183,12 +184,15 @@ async function checkStreakAchievements(
   if (rows.length === 0) return earned;
 
   let streak = 0;
-  let current = new Date();
-  current.setHours(0, 0, 0, 0);
+  // Anchor on the app's fixed UTC+3 "today" (matching how step_date rows are
+  // bucketed), not the server process's local/UTC "today" — otherwise, during
+  // the evening hours in Turkey (still "yesterday" in UTC), today's
+  // already-synced steps look like they're from "tomorrow" relative to the
+  // server clock and the streak breaks immediately (diffDays goes negative).
+  let current = new Date(todayInAppTimezone());
 
   for (const row of rows) {
     const rowDate = new Date(row.step_date);
-    rowDate.setHours(0, 0, 0, 0);
     const diffDays = Math.round((current.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0 || diffDays === 1) {

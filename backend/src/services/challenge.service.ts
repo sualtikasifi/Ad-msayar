@@ -459,14 +459,22 @@ export async function claimPenalty(challengeId: string, userId: string): Promise
 }
 
 export async function completeExpiredChallenges(io: Server): Promise<void> {
+  // `CURRENT_DATE` resolves in the DB server's configured timezone (typically
+  // UTC on managed Postgres), while every other "today" comparison in this
+  // app (getChallengeRankings, recalculateUserChallenges, etc.) uses the
+  // fixed UTC+3 app timezone. Comparing against a mismatched "today" could
+  // complete challenges up to a few hours early/late relative to the rest of
+  // the app's date bucketing — pass the app-timezone date explicitly instead.
+  const today = todayInAppTimezone();
   const { rows } = await pool.query<Challenge>(
     `UPDATE challenges
      SET status = 'completed', updated_at = NOW()
      WHERE status = 'active' AND (
-       (mode != 'duel' AND end_date < CURRENT_DATE) OR
+       (mode != 'duel' AND end_date < $1) OR
        (mode = 'duel' AND started_at IS NOT NULL AND started_at + INTERVAL '24 hours' < NOW())
      )
-     RETURNING *`
+     RETURNING *`,
+    [today]
   );
 
   for (const challenge of rows) {

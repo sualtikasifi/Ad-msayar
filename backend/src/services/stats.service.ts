@@ -1,4 +1,5 @@
 import { pool } from '../config/database';
+import { todayInAppTimezone } from '../utils/date';
 
 export interface DailyPoint {
   date: string;
@@ -31,38 +32,45 @@ export interface MonthlyHeatmapPoint {
 // ─── Last N days bar chart data ───────────────────────────────────────────
 
 export async function getLast30Days(userId: string): Promise<DailyPoint[]> {
+  // Anchor the range on the app's fixed UTC+3 "today" rather than the DB
+  // server's CURRENT_DATE (typically UTC on managed Postgres) — otherwise
+  // this range is off by a day from the rest of the app (daily_steps rows
+  // are written using the device's local/app-timezone calendar day) for
+  // part of the evening/night.
+  const today = todayInAppTimezone();
   // Returns one row per day for last 30 days, filling 0 for missing days
   const { rows } = await pool.query(
     `SELECT
        gs.day::date::text AS date,
        COALESCE(ds.step_count, 0) AS steps
      FROM generate_series(
-       CURRENT_DATE - INTERVAL '29 days',
-       CURRENT_DATE,
+       $2::date - INTERVAL '29 days',
+       $2::date,
        '1 day'
      ) AS gs(day)
      LEFT JOIN daily_steps ds
        ON ds.user_id = $1 AND ds.step_date = gs.day::date
      ORDER BY gs.day ASC`,
-    [userId]
+    [userId, today]
   );
   return rows;
 }
 
 export async function getLast7Days(userId: string): Promise<DailyPoint[]> {
+  const today = todayInAppTimezone();
   const { rows } = await pool.query(
     `SELECT
        gs.day::date::text AS date,
        COALESCE(ds.step_count, 0) AS steps
      FROM generate_series(
-       CURRENT_DATE - INTERVAL '6 days',
-       CURRENT_DATE,
+       $2::date - INTERVAL '6 days',
+       $2::date,
        '1 day'
      ) AS gs(day)
      LEFT JOIN daily_steps ds
        ON ds.user_id = $1 AND ds.step_date = gs.day::date
      ORDER BY gs.day ASC`,
-    [userId]
+    [userId, today]
   );
   return rows;
 }
@@ -70,6 +78,7 @@ export async function getLast7Days(userId: string): Promise<DailyPoint[]> {
 // ─── Weekly aggregates ────────────────────────────────────────────────────
 
 export async function getLast12Weeks(userId: string): Promise<WeeklyPoint[]> {
+  const today = todayInAppTimezone();
   const { rows } = await pool.query(
     `SELECT
        date_trunc('week', gs.week)::date::text AS week_start,
@@ -77,8 +86,8 @@ export async function getLast12Weeks(userId: string): Promise<WeeklyPoint[]> {
        ROUND(COALESCE(AVG(CASE WHEN ds.step_count > 0 THEN ds.step_count END), 0))::int AS avg_daily,
        COUNT(CASE WHEN ds.step_count > 0 THEN 1 END)::int AS active_days
      FROM generate_series(
-       date_trunc('week', CURRENT_DATE) - INTERVAL '11 weeks',
-       date_trunc('week', CURRENT_DATE),
+       date_trunc('week', $2::date) - INTERVAL '11 weeks',
+       date_trunc('week', $2::date),
        '1 week'
      ) AS gs(week)
      LEFT JOIN daily_steps ds
@@ -87,7 +96,7 @@ export async function getLast12Weeks(userId: string): Promise<WeeklyPoint[]> {
        AND ds.step_date < (gs.week + INTERVAL '7 days')::date
      GROUP BY gs.week
      ORDER BY gs.week ASC`,
-    [userId]
+    [userId, today]
   );
   return rows;
 }
@@ -103,15 +112,16 @@ export async function getPersonalRecords(userId: string): Promise<PersonalRecord
   );
 
   // Total & active days
+  const today = todayInAppTimezone();
   const { rows: totRows } = await pool.query<{
     total: string; active_days: string; avg_30d: string;
   }>(
     `SELECT
        COALESCE(SUM(step_count), 0)::text AS total,
        COUNT(*)::text AS active_days,
-       ROUND(COALESCE(AVG(CASE WHEN step_date >= CURRENT_DATE - 29 THEN step_count END), 0))::text AS avg_30d
+       ROUND(COALESCE(AVG(CASE WHEN step_date >= $2::date - 29 THEN step_count END), 0))::text AS avg_30d
      FROM daily_steps WHERE user_id = $1`,
-    [userId]
+    [userId, today]
   );
 
   // Current streak
@@ -125,12 +135,14 @@ export async function getPersonalRecords(userId: string): Promise<PersonalRecord
   let currentStreak = 0;
   let longestStreak = 0;
   let tempStreak = 0;
-  let cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
+  // Anchor on the app's fixed UTC+3 "today" (matching how step_date rows are
+  // bucketed), not the server process's local/UTC "today" — otherwise, during
+  // the evening hours in Turkey (still "yesterday" in UTC), a streak that
+  // includes today's already-synced steps is off by one day and undercounts.
+  let cursor = new Date(today);
 
   for (const row of streakRows) {
     const d = new Date(row.step_date);
-    d.setHours(0, 0, 0, 0);
     const diff = Math.round((cursor.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diff <= 1) {

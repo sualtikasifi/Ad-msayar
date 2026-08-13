@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { AppState } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { useStepsStore } from '../store/stepsStore';
 
@@ -9,6 +10,10 @@ interface PedometerState {
   todaySteps: number;
   isAvailable: boolean;
   permissionGranted: boolean;
+  // Flips true once the initial availability/permission check has resolved,
+  // so callers can distinguish "still checking" (both flags start false)
+  // from a real denial/unavailable-sensor state worth surfacing to the user.
+  checked: boolean;
 }
 
 /**
@@ -28,12 +33,26 @@ export function usePedometer(): PedometerState {
   const { todaySteps, setTodaySteps, syncToServer, loadTodayFromServer } = useStepsStore();
   const [isAvailable, setIsAvailable] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [checked, setChecked] = useState(false);
+  // Bumped whenever the app returns to the foreground, so the main effect
+  // below re-runs its permission/availability check and (re)establishes the
+  // watchStepCount subscription if the user just granted the permission from
+  // the OS Settings screen. There is no other AppState listener in the app.
+  const [recheckTrigger, setRecheckTrigger] = useState(0);
 
   const pendingSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Live-stream anchoring (mainly for Android, where the stream is relative).
   const watchOriginRef = useRef<number | null>(null);
   const sessionBaseRef = useRef<number>(0);
+  // Holds the live watchStepCount subscription across re-renders/re-runs of
+  // the setup effect below, so it isn't torn down just because the effect
+  // re-ran (e.g. on a foreground recheck) — only real unmount removes it.
+  const pedometerSubRef = useRef<ReturnType<typeof Pedometer.watchStepCount> | null>(null);
+  // True once sensor setup has actually completed (subscription established,
+  // or the sensor was found permanently unavailable). While permission is
+  // still denied this stays false, so the next foreground recheck retries.
+  const initializedRef = useRef(false);
 
   const scheduledSync = useCallback(
     (count: number) => {
@@ -45,15 +64,40 @@ export function usePedometer(): PedometerState {
     [syncToServer]
   );
 
+  // Re-check permission/availability whenever the app comes back to the
+  // foreground. This covers the flow: permission denied -> user taps the
+  // "Ayarlar'ı aç" banner -> grants permission in Settings -> returns to the
+  // app. Without this, `checked`/`permissionGranted`/`isAvailable` would only
+  // ever be computed once at mount, and the watchStepCount subscription
+  // (skipped on the initial denial) would never be established until the
+  // app was fully restarted.
   useEffect(() => {
-    let subscription: ReturnType<typeof Pedometer.watchStepCount> | null = null;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        setRecheckTrigger((n) => n + 1);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    // Sensor setup already completed (subscribed, or permanently
+    // unavailable) — the foreground recheck that re-ran this effect doesn't
+    // need to redo any work, and must NOT tear down the live subscription
+    // (it lives in pedometerSubRef, not in this effect's own cleanup).
+    if (initializedRef.current) return;
+
     let cancelled = false;
 
     (async () => {
       const available = await Pedometer.isAvailableAsync().catch(() => false);
       if (cancelled) return;
       setIsAvailable(available);
-      if (!available) return;
+      if (!available) {
+        setChecked(true);
+        initializedRef.current = true;
+        return;
+      }
 
       // 1) Request the runtime permission (ACTIVITY_RECOGNITION on Android,
       //    motion on iOS). Without this the sensor never emits on Android 10+.
@@ -64,11 +108,13 @@ export function usePedometer(): PedometerState {
         }
         if (cancelled) return;
         setPermissionGranted(perm.granted);
+        setChecked(true);
         if (!perm.granted) return;
       } catch {
         // Some platforms/SDKs don't implement the permission API — continue and
         // let watchStepCount fail gracefully if truly unavailable.
         setPermissionGranted(true);
+        setChecked(true);
       }
 
       // 2) Hydrate today's authoritative total from the server BEFORE anchoring
@@ -98,7 +144,7 @@ export function usePedometer(): PedometerState {
 
       // 4) Live updates. The stream reports steps since it began, so we anchor it
       //    to the count already known for today and only ever grow the total.
-      subscription = Pedometer.watchStepCount((result) => {
+      pedometerSubRef.current = Pedometer.watchStepCount((result) => {
         if (watchOriginRef.current === null) {
           watchOriginRef.current = result.steps;
           sessionBaseRef.current = useStepsStore.getState().todaySteps;
@@ -126,15 +172,28 @@ export function usePedometer(): PedometerState {
           if (latest > 0) syncToServer(latest).catch(console.error);
         }
       }, SYNC_INTERVAL_MS);
+
+      // Setup fully succeeded — subsequent foreground rechecks are no-ops.
+      initializedRef.current = true;
     })();
 
     return () => {
       cancelled = true;
-      subscription?.remove();
+    };
+  }, [recheckTrigger, setTodaySteps, scheduledSync, syncToServer, loadTodayFromServer]);
+
+  // Real teardown (component unmount) only — removes the live subscription,
+  // pending debounce and periodic sync interval. This is intentionally kept
+  // separate from the setup effect above so that a foreground recheck (which
+  // re-runs the setup effect but no-ops once initialized) never tears down
+  // an already-working subscription.
+  useEffect(() => {
+    return () => {
+      pedometerSubRef.current?.remove();
       if (pendingSyncRef.current) clearTimeout(pendingSyncRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [setTodaySteps, scheduledSync, syncToServer, loadTodayFromServer]);
+  }, []);
 
-  return { todaySteps, isAvailable, permissionGranted };
+  return { todaySteps, isAvailable, permissionGranted, checked };
 }
