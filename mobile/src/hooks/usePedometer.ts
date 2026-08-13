@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { useStepsStore } from '../store/stepsStore';
+import { schedulePermissionReminderIfNeeded, cancelPermissionReminder } from '../services/permissionReminder';
 
 const SYNC_INTERVAL_MS = 60 * 1000; // forced sync every 60s
 const DEBOUNCE_MS = 500;
@@ -87,6 +88,17 @@ export function usePedometer(): PedometerState {
     // (it lives in pedometerSubRef, not in this effect's own cleanup).
     if (initializedRef.current) return;
 
+    // Grab the setup lock synchronously, before any async work starts. If the
+    // app foregrounds twice in quick succession (AppState 'active' firing
+    // more than once before the first run has a chance to flip this ref at
+    // its natural completion point), this prevents a second overlapping run
+    // from ever starting a second `watchStepCount` subscription (which would
+    // overwrite `pedometerSubRef` and leak the first, un-removed listener).
+    // Failure paths below that should be retried on the next foreground
+    // recheck (sensor check itself failing, or permission still deniable)
+    // explicitly release this lock again.
+    initializedRef.current = true;
+
     let cancelled = false;
 
     (async () => {
@@ -109,7 +121,20 @@ export function usePedometer(): PedometerState {
         if (cancelled) return;
         setPermissionGranted(perm.granted);
         setChecked(true);
-        if (!perm.granted) return;
+        if (!perm.granted) {
+          if (perm.canAskAgain) {
+            // Still deniable — release the lock so the next foreground
+            // recheck retries the permission prompt/check.
+            initializedRef.current = false;
+          }
+          // canAskAgain === false: the user permanently denied the
+          // permission ("don't ask again"). Keep the lock held so we don't
+          // pointlessly re-run `getPermissionsAsync()` on every subsequent
+          // foreground return — the OS itself never changes this back, the
+          // user has to grant it from Settings, and the app would need a
+          // fresh mount to pick that up in this state.
+          return;
+        }
       } catch {
         // Some platforms/SDKs don't implement the permission API — continue and
         // let watchStepCount fail gracefully if truly unavailable.
@@ -181,6 +206,28 @@ export function usePedometer(): PedometerState {
       cancelled = true;
     };
   }, [recheckTrigger, setTodaySteps, scheduledSync, syncToServer, loadTodayFromServer]);
+
+  // Once the permission check has resolved, keep a local (on-device) reminder
+  // notification in sync with the current denial/grant state: schedule one if
+  // denied (at most once per day — see permissionReminder.ts), or cancel any
+  // pending one the moment permission is granted (e.g. via the in-app banner
+  // -> OS Settings -> back-to-app flow above) so the user isn't nagged after
+  // already fixing it. Only relevant when the sensor actually exists — on a
+  // device with no pedometer, permissionGranted never becomes true, so
+  // without this guard we'd schedule an unfixable "grant permission" nudge
+  // (and never be able to cancel it).
+  useEffect(() => {
+    if (!checked) return;
+    if (!isAvailable) {
+      cancelPermissionReminder().catch(() => {});
+      return;
+    }
+    if (permissionGranted) {
+      cancelPermissionReminder().catch(() => {});
+    } else {
+      schedulePermissionReminderIfNeeded().catch(() => {});
+    }
+  }, [checked, isAvailable, permissionGranted]);
 
   // Real teardown (component unmount) only — removes the live subscription,
   // pending debounce and periodic sync interval. This is intentionally kept

@@ -1,6 +1,7 @@
 import https from 'https';
 import { pool } from '../config/database';
 import { todayInAppTimezone } from '../utils/date';
+import { computeCurrentStreak } from './streak.service';
 
 // ─── Token management ──────────────────────────────────────────────────────
 
@@ -268,12 +269,26 @@ export async function sendDailyStepReminders(): Promise<void> {
       const tokens = await getTokensForUser(r.user_id);
       const goal = r.daily_step_goal ?? 10000;
       const stepsLeft = Math.max(goal - r.step_count, 0);
+
+      // If the user hasn't synced any steps today, check whether they have an
+      // active streak — losing it tonight is a stronger nudge than the plain
+      // "you haven't walked yet" message.
+      let body =
+        r.step_count === 0
+          ? `Bugün hiç adım atmadın! ${goal.toLocaleString()} adım hedefe ulaşmak için harekete geç.`
+          : `${r.step_count.toLocaleString()} adım attın, hedefe ${stepsLeft.toLocaleString()} adım kaldı!`;
+
+      if (r.step_count === 0) {
+        const streak = await computeCurrentStreak(r.user_id);
+        if (streak > 0) {
+          body = `🔥 ${streak} günlük serin tehlikede! Bugün henüz adım atmadın, serini korumak için hemen başla.`;
+        }
+      }
+
       return tokens.filter(isExpoToken).map((token) => ({
         to: token,
         title: '👟 Günlük Hatırlatıcı',
-        body: r.step_count === 0
-          ? `Bugün hiç adım atmadın! ${goal.toLocaleString()} adım hedefe ulaşmak için harekete geç.`
-          : `${r.step_count.toLocaleString()} adım attın, hedefe ${stepsLeft.toLocaleString()} adım kaldı!`,
+        body,
         data: { screen: 'home' },
         sound: 'default' as const,
       }));

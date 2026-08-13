@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { pool } from '../config/database';
 import * as pushService from './push.service';
-import { todayInAppTimezone } from '../utils/date';
+import { computeCurrentStreak } from './streak.service';
 
 export interface Achievement {
   id: string;
@@ -171,37 +171,8 @@ async function checkStreakAchievements(
 ): Promise<Achievement[]> {
   const earned: Achievement[] = [];
 
-  // Calculate current streak: consecutive days ending today with step_count > 0
-  const { rows } = await pool.query<{ step_date: string; step_count: number }>(
-    `SELECT step_date::text, step_count
-     FROM daily_steps
-     WHERE user_id = $1 AND step_count > 0
-     ORDER BY step_date DESC
-     LIMIT 120`,
-    [userId]
-  );
-
-  if (rows.length === 0) return earned;
-
-  let streak = 0;
-  // Anchor on the app's fixed UTC+3 "today" (matching how step_date rows are
-  // bucketed), not the server process's local/UTC "today" — otherwise, during
-  // the evening hours in Turkey (still "yesterday" in UTC), today's
-  // already-synced steps look like they're from "tomorrow" relative to the
-  // server clock and the streak breaks immediately (diffDays goes negative).
-  let current = new Date(todayInAppTimezone());
-
-  for (const row of rows) {
-    const rowDate = new Date(row.step_date);
-    const diffDays = Math.round((current.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0 || diffDays === 1) {
-      streak++;
-      current = rowDate;
-    } else {
-      break;
-    }
-  }
+  const streak = await computeCurrentStreak(userId);
+  if (streak === 0) return earned;
 
   const streakMilestones: [number, string][] = [
     [3,   'streak_3'],
