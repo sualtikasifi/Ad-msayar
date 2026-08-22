@@ -349,7 +349,7 @@ export default function ChallengeDetailScreen() {
       const title = challenge?.title || (challenge?.type === '1v1' ? '1v1 Challenge' : 'Grup Challenge');
       const deepLink = `admsayar://challenge/invite/${token}`;
       await Share.share({
-        message: `Ad Msayar'da seni "${title}" challenge'ına davet ediyorum! 🏆\n\nKatılmak için: ${deepLink}`,
+        message: `Adımsayar'da seni "${title}" challenge'ına davet ediyorum! 🏆\n\nKatılmak için: ${deepLink}`,
         title: 'Challenge Daveti',
       });
     } catch (err: unknown) {
