@@ -48,7 +48,7 @@
         {
           "android": {
             "foregroundService": {
-              "notificationTitle": "Ad Msayar Çalışıyor",
+              "notificationTitle": "Adımsayar Çalışıyor",
               "notificationBody": "Adımlarınız sayılıyor..."
             }
           }

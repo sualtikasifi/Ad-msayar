@@ -35,25 +35,21 @@ export function usePedometer(): PedometerState {
   const [isAvailable, setIsAvailable] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [checked, setChecked] = useState(false);
-  // Bumped whenever the app returns to the foreground, so the main effect
-  // below re-runs its permission/availability check and (re)establishes the
-  // watchStepCount subscription if the user just granted the permission from
-  // the OS Settings screen. There is no other AppState listener in the app.
-  const [recheckTrigger, setRecheckTrigger] = useState(0);
 
   const pendingSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Live-stream anchoring (mainly for Android, where the stream is relative).
   const watchOriginRef = useRef<number | null>(null);
   const sessionBaseRef = useRef<number>(0);
-  // Holds the live watchStepCount subscription across re-renders/re-runs of
-  // the setup effect below, so it isn't torn down just because the effect
-  // re-ran (e.g. on a foreground recheck) — only real unmount removes it.
+  // Holds the live watchStepCount subscription so it survives re-renders and is
+  // only ever removed on real unmount.
   const pedometerSubRef = useRef<ReturnType<typeof Pedometer.watchStepCount> | null>(null);
-  // True once sensor setup has actually completed (subscription established,
-  // or the sensor was found permanently unavailable). While permission is
-  // still denied this stays false, so the next foreground recheck retries.
-  const initializedRef = useRef(false);
+  // Guards against two overlapping setup runs (e.g. mount + an immediate
+  // foreground event) racing to create two subscriptions. Held for good once
+  // setup finishes or is known to be unrecoverable; released again on any
+  // outcome that a later retry could still fix.
+  const settingUpRef = useRef(false);
+  const unmountedRef = useRef(false);
 
   const scheduledSync = useCallback(
     (count: number) => {
@@ -65,49 +61,37 @@ export function usePedometer(): PedometerState {
     [syncToServer]
   );
 
-  // Re-check permission/availability whenever the app comes back to the
-  // foreground. This covers the flow: permission denied -> user taps the
-  // "Ayarlar'ı aç" banner -> grants permission in Settings -> returns to the
-  // app. Without this, `checked`/`permissionGranted`/`isAvailable` would only
-  // ever be computed once at mount, and the watchStepCount subscription
-  // (skipped on the initial denial) would never be established until the
-  // app was fully restarted.
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        setRecheckTrigger((n) => n + 1);
-      }
-    });
-    return () => subscription.remove();
-  }, []);
+  /**
+   * Idempotent sensor setup. Safe to call repeatedly (on mount and on every
+   * return to the foreground): it no-ops while a run is in flight and once a
+   * run has succeeded.
+   *
+   * Deliberately NOT driven by an effect's dependency array. A previous
+   * version re-ran the whole setup effect on a `recheckTrigger` state bump and
+   * aborted the in-flight run via a `cancelled` flag captured in the effect
+   * cleanup. That deadlocked the sensor: requesting the runtime permission
+   * opens a system dialog, which backgrounds the app, so granting it fires
+   * AppState 'active' *while setup is still awaiting* — the cleanup cancelled
+   * the in-flight run, and the re-run bailed out immediately because the setup
+   * lock was already held. `watchStepCount` was then never subscribed and the
+   * lock was never released, so steps silently stopped counting for the whole
+   * session. Calling this function directly keeps in-flight work alive.
+   */
+  const setupPedometer = useCallback(async () => {
+    if (settingUpRef.current || unmountedRef.current) return;
+    settingUpRef.current = true;
 
-  useEffect(() => {
-    // Sensor setup already completed (subscribed, or permanently
-    // unavailable) — the foreground recheck that re-ran this effect doesn't
-    // need to redo any work, and must NOT tear down the live subscription
-    // (it lives in pedometerSubRef, not in this effect's own cleanup).
-    if (initializedRef.current) return;
+    // Only keep the lock for outcomes a retry can't improve on: a completed
+    // setup, a device with no sensor, or a permanently denied permission.
+    let keepLock = false;
 
-    // Grab the setup lock synchronously, before any async work starts. If the
-    // app foregrounds twice in quick succession (AppState 'active' firing
-    // more than once before the first run has a chance to flip this ref at
-    // its natural completion point), this prevents a second overlapping run
-    // from ever starting a second `watchStepCount` subscription (which would
-    // overwrite `pedometerSubRef` and leak the first, un-removed listener).
-    // Failure paths below that should be retried on the next foreground
-    // recheck (sensor check itself failing, or permission still deniable)
-    // explicitly release this lock again.
-    initializedRef.current = true;
-
-    let cancelled = false;
-
-    (async () => {
+    try {
       const available = await Pedometer.isAvailableAsync().catch(() => false);
-      if (cancelled) return;
+      if (unmountedRef.current) return;
       setIsAvailable(available);
+      setChecked(true);
       if (!available) {
-        setChecked(true);
-        initializedRef.current = true;
+        keepLock = true;
         return;
       }
 
@@ -118,28 +102,19 @@ export function usePedometer(): PedometerState {
         if (!perm.granted && perm.canAskAgain) {
           perm = await Pedometer.requestPermissionsAsync();
         }
-        if (cancelled) return;
+        if (unmountedRef.current) return;
         setPermissionGranted(perm.granted);
-        setChecked(true);
         if (!perm.granted) {
-          if (perm.canAskAgain) {
-            // Still deniable — release the lock so the next foreground
-            // recheck retries the permission prompt/check.
-            initializedRef.current = false;
-          }
-          // canAskAgain === false: the user permanently denied the
-          // permission ("don't ask again"). Keep the lock held so we don't
-          // pointlessly re-run `getPermissionsAsync()` on every subsequent
-          // foreground return — the OS itself never changes this back, the
-          // user has to grant it from Settings, and the app would need a
-          // fresh mount to pick that up in this state.
+          // Permanently denied ("don't ask again") can only be undone from the
+          // OS settings screen — hold the lock so we don't re-prompt on every
+          // foreground. Otherwise release it so the next return retries.
+          keepLock = !perm.canAskAgain;
           return;
         }
       } catch {
         // Some platforms/SDKs don't implement the permission API — continue and
         // let watchStepCount fail gracefully if truly unavailable.
         setPermissionGranted(true);
-        setChecked(true);
       }
 
       // 2) Hydrate today's authoritative total from the server BEFORE anchoring
@@ -152,7 +127,7 @@ export function usePedometer(): PedometerState {
       } catch {
         /* offline or first run — keep whatever is already in the store. */
       }
-      if (cancelled) return;
+      if (unmountedRef.current) return;
 
       // 3) iOS only: seed today's total from the historical query. On Android
       //    this throws, so we keep whatever is already in the store (server value).
@@ -160,16 +135,18 @@ export function usePedometer(): PedometerState {
         const midnight = new Date();
         midnight.setHours(0, 0, 0, 0);
         const initial = await Pedometer.getStepCountAsync(midnight, new Date());
-        if (cancelled) return;
+        if (unmountedRef.current) return;
         setTodaySteps(initial.steps);
         scheduledSync(initial.steps);
       } catch {
         /* Android: historical queries unsupported — rely on the live stream. */
       }
 
+      if (unmountedRef.current) return;
+
       // 4) Live updates. The stream reports steps since it began, so we anchor it
       //    to the count already known for today and only ever grow the total.
-      pedometerSubRef.current = Pedometer.watchStepCount((result) => {
+      const subscription = Pedometer.watchStepCount((result) => {
         if (watchOriginRef.current === null) {
           watchOriginRef.current = result.steps;
           sessionBaseRef.current = useStepsStore.getState().todaySteps;
@@ -181,6 +158,14 @@ export function usePedometer(): PedometerState {
         setTodaySteps(safeCount);
         scheduledSync(safeCount);
       });
+
+      // Unmounted while subscribing — the teardown effect has already run, so
+      // clean up here instead of leaking a live native listener.
+      if (unmountedRef.current) {
+        subscription.remove();
+        return;
+      }
+      pedometerSubRef.current = subscription;
 
       // 5) Periodic forced sync. iOS can re-query an accurate absolute total;
       //    Android just re-syncs the latest known value.
@@ -198,14 +183,29 @@ export function usePedometer(): PedometerState {
         }
       }, SYNC_INTERVAL_MS);
 
-      // Setup fully succeeded — subsequent foreground rechecks are no-ops.
-      initializedRef.current = true;
-    })();
+      keepLock = true; // fully set up — later calls are no-ops
+    } finally {
+      if (!keepLock) settingUpRef.current = false;
+    }
+  }, [setTodaySteps, scheduledSync, syncToServer, loadTodayFromServer]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [recheckTrigger, setTodaySteps, scheduledSync, syncToServer, loadTodayFromServer]);
+  useEffect(() => {
+    unmountedRef.current = false;
+    setupPedometer().catch(() => {});
+  }, [setupPedometer]);
+
+  // Retry setup whenever the app returns to the foreground. This covers the
+  // flow: permission denied -> user taps the "Ayarlar'ı aç" banner -> grants
+  // it in Settings -> comes back. It is a plain call (not an effect re-run),
+  // so it can never abort a setup that is still in flight.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        setupPedometer().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
+  }, [setupPedometer]);
 
   // Once the permission check has resolved, keep a local (on-device) reminder
   // notification in sync with the current denial/grant state: schedule one if
@@ -218,11 +218,7 @@ export function usePedometer(): PedometerState {
   // (and never be able to cancel it).
   useEffect(() => {
     if (!checked) return;
-    if (!isAvailable) {
-      cancelPermissionReminder().catch(() => {});
-      return;
-    }
-    if (permissionGranted) {
+    if (!isAvailable || permissionGranted) {
       cancelPermissionReminder().catch(() => {});
     } else {
       schedulePermissionReminderIfNeeded().catch(() => {});
@@ -230,13 +226,12 @@ export function usePedometer(): PedometerState {
   }, [checked, isAvailable, permissionGranted]);
 
   // Real teardown (component unmount) only — removes the live subscription,
-  // pending debounce and periodic sync interval. This is intentionally kept
-  // separate from the setup effect above so that a foreground recheck (which
-  // re-runs the setup effect but no-ops once initialized) never tears down
-  // an already-working subscription.
+  // pending debounce and periodic sync interval.
   useEffect(() => {
     return () => {
+      unmountedRef.current = true;
       pedometerSubRef.current?.remove();
+      pedometerSubRef.current = null;
       if (pendingSyncRef.current) clearTimeout(pendingSyncRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
